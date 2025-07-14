@@ -1,0 +1,7 @@
+# carpetas innecesarias
+kmasgec.egg-info/
+build/
+
+# Archivos innecesarios
+.DS_Store
+kmasgec/.DS_Store
