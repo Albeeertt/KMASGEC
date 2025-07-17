@@ -22,6 +22,22 @@ def save_chunks_to_json(X_chunk, y_chunk, filename):
             json.dump({"X": toBase64(x_table), "Y": toBase64(y_table)}, file)
             file.write("\n")
 
+def save_chunks_andIdx_to_json(X_chunk, y_chunk, idx_chunk, filename):
+    """Guarda un ndarray en JSON de forma eficiente usando base64."""
+    def toBase64(array):
+        array_bytes = array.tobytes()
+        array_b64   = base64.b64encode(array_bytes).decode("utf-8")
+        return {
+            "shape": array.shape,
+            "dtype": str(array.dtype),
+            "data":  array_b64
+        }
+
+    mode = 'w' if not os.path.exists(filename) else 'a'
+    with open(filename, mode) as file:
+        for x_table, y_table, idx in zip(X_chunk, y_chunk, idx_chunk):
+            json.dump({"X": toBase64(x_table), "Y": toBase64(y_table), 'idx': toBase64(idx)}, file)
+            file.write("\n")
 
 def numpy_generator(filename: str):
     """Generador que lee JSON línea a línea y devuelve np.ndarrays."""
