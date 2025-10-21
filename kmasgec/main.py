@@ -200,7 +200,7 @@ def ejecutar():
         if true != pred:
             gff['Bad'] = 'Yes'
 
-    gff.to_csv('prueba.csv', sep=',')
+    gff.to_csv(route_out+'prueba.csv', sep=',')
 
 
         # Second Data

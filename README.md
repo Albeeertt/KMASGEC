@@ -29,7 +29,7 @@ This project requires a Python virtual environment to manage dependencies in iso
 From the project root folder, run:
 
 ```bash
-python -m venv KMAsgec
+python3.10 -m venv KMAsgec
 ```
 
 ### 1.1 Conda environment
@@ -37,12 +37,8 @@ python -m venv KMAsgec
 Before installing the tool, you need to create another environment, this time with conda; so, from the terminal run:
 
 ```bash
-conda create -n katulu \
-  agat=1.2.0 \
-  perl-clone \
-  perl-list-moreutils \
-  perl-sort-naturally \
-  perl-try-tiny
+conda config --set channel_priority strict
+conda create -n agat120 -c conda-forge -c bioconda agat=1.2.0 -y
 ```
 
 ### 1.2 Activate the virtual environment on Windows
