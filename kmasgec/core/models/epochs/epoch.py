@@ -281,7 +281,7 @@ def iteration_test_oneHead(
 
             all_trues.extend(labels.cpu().tolist())
             all_preds.extend(preds.cpu().tolist())
-            all_places.extend(place.tolist())
+            all_places.extend(list(place))
 
             loss     = criterion(outputs, labels)
             total_val_loss     += loss.item() * batch_size
