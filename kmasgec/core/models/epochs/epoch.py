@@ -273,10 +273,10 @@ def iteration_test_oneHead(
             batch_size = labels.size(0)
 
             outputs = model(input_ids, attention_mask=attention_mask)
-            acc    = calculate_accuracy(outputs, labels)
             preds = outputs.argmax(dim=1)
+            correct = (preds == labels).sum().item()
 
-            total_acc   += acc * batch_size
+            total_acc   += correct * batch_size
             total_count += batch_size
 
             all_trues.extend(labels.cpu().tolist())
@@ -304,6 +304,7 @@ def iteration_test_oneHead(
         print(f"  Clase {cls_idx}: {acc:.4f}")
     print("--------------------------------------------------")
     return cm, all_trues, all_preds, all_places
+
 
 def test(
     dataloader,      # ahora es un DataLoader, no el Dataset crudo

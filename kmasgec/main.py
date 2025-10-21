@@ -194,7 +194,7 @@ def ejecutar():
 
 
     pbar_test = tqdm(loader_test, total=n_batches_test, desc="Test")
-    cm, all_trues, all_preds, all_places = iteration_test_oneHead(pbar_test,  model, device, criterion, 2, 'first.json')
+    cm, all_trues, all_preds, all_places = iteration_test_oneHead(pbar_test,  model, device, criterion, 2)
     pbar_test.close()
 
     gff['Result'] = '0'
@@ -329,6 +329,6 @@ def ejecutar():
 
 
     # pbar_test = tqdm(loader_test, total=n_batches_test, desc="Test")
-    # cm, all_trues, all_preds, all_places = iteration_test_oneHead(pbar_test,  model, device, criterion, 3, 'second.json')
+    # cm, all_trues, all_preds, all_places = iteration_test_oneHead(pbar_test,  model, device, criterion, 3)
     # pbar_test.close()
 
