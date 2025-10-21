@@ -29,6 +29,8 @@ This project requires a Python virtual environment to manage dependencies in iso
 From the project root folder, run:
 
 ```bash
+git clone https://github.com/Albeeertt/KMASGEC.git
+cd KMASGEC
 python3.10 -m venv KMAsgec
 ```
 
@@ -71,11 +73,11 @@ pip install .
 Once the package is installed and the environment is activated, you can run the main program by passing the following arguments:
 
 - **--gff**: Path to the GFF file.  
-- **--fasta**: Path to the FASTA file.  
-- **--n_cpus**: Number of CPUs to use.  
-- **--repeatMask**: GFF3 file that enables annotation of transposable elements.  
+- **--fasta**: Path to the FASTA file.   
 - **--add_labels**: Adds introns, intergenic regions, and transposable elements using AGAT.  
 - **--out**: Carpeta donde se va a alojar row_w_high_KLDivergence.
+- **--batch_size**: size of batch.
+
 
 
 ## Calculated metrics

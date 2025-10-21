@@ -27,9 +27,9 @@ from kmasgec.core.CleanData import CleanData
 from kmasgec.core.GenerateDataset import GenerateDataset
 from kmasgec.utils.agat import Agat
 from kmasgec.utils.json_pytorch import save_all_to_json
-from kmasgec.models.loaders.Loader import Base64JSONIterableDataset, collate_fn_oneHead
-from kmasgec.models.epochs.epoch import iteration_test_oneHead
-from kmasgec.models.model_architecture.transformers import TransformerClassifier_pool
+from kmasgec.core.models.loaders.Loader import Base64JSONIterableDataset, collate_fn_oneHead
+from kmasgec.core.models.epochs.epoch import iteration_test_oneHead
+from kmasgec.core.models.model_architecture.transformers import TransformerClassifier_pool
 
 def obtener_argumentos():
     parser = argparse.ArgumentParser()
