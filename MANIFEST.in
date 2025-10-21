@@ -1,1 +1,1 @@
-recursive-include kmasgec/models *.pt
+recursive-include kmasgec/generate_models *.pt

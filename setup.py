@@ -5,11 +5,11 @@ with open("requeriments.txt") as f:
 
 setup(
     name="kmasgec",
-    version="0.1",
+    version="0.1.2",
     packages=find_packages(include=["kmasgec", "kmasgec.*"]),
     include_package_data=True,
       package_data={                    
-        "kmasgec": ["models/*.pt"],
+        "kmasgec": ["generate_models/*.pt"],
     },
     install_requires=requirements,
     entry_points={
