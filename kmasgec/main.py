@@ -119,6 +119,7 @@ def ejecutar():
     # ---------------------------------------------------------------------------------------------
 
     batch_size: int = args.batch_size
+    min_len_seq: Dict[int, int] = {0: 50, 1: 50, 2: 50, 3: 50}
     agrupacion = 6
     kmer: bool = False
     instance_generateDataset  = GenerateDataset(False, agrupacion, kmer)
@@ -126,6 +127,7 @@ def ejecutar():
     padding_value = len(instance_generateDataset.vocabularyComplete)
     print("Tamaño del vocabulario: ", len(instance_generateDataset.vocabularyComplete))
     partial_collateFN = partial(collate_fn_oneHead, padding_value=padding_value)
+    proportions = True
 
 
     max_len_seq = 100000
@@ -177,7 +179,7 @@ def ejecutar():
     optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
 
 
-    dataset = Base64JSONIterableDataset(ruta_data_first_algorithm, max_len_seq, instance_generateDataset)
+    dataset = Base64JSONIterableDataset(ruta_data_first_algorithm, min_len_seq, max_len_seq, instance_generateDataset,kmer = kmer, proportions = proportions)
     loader_test  = DataLoader(
         dataset,
         batch_size=batch_size,
@@ -259,6 +261,7 @@ def ejecutar():
     # padding_value = len(instance_generateDataset.vocabularyComplete)
     # print("Tamaño del vocabulario: ", len(instance_generateDataset.vocabularyComplete))
     # partial_collateFN = partial(collate_fn_oneHead, padding_value=padding_value)
+    # min_len_seq: Dict[int, int] = {0: 50, 1: 50}
 
 
     # max_len_seq = 50000
@@ -310,7 +313,8 @@ def ejecutar():
     # optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
 
 
-    # dataset = Base64JSONIterableDataset(ruta_data_second_algorithm, max_len_seq, instance_generateDataset)
+    # dataset = Base64JSONIterableDataset(ruta_data_second_algorithm, min_len_seq, max_len_seq, instance_generateDataset,kmer = kmer, proportions = proportions)
+
     # loader_test  = DataLoader(
     #     dataset,
     #     batch_size=batch_size,
