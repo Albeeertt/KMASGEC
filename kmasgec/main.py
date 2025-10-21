@@ -88,6 +88,8 @@ def ejecutar():
     )
 
     data_first_algorithm['proportions'] = 1
+    data_first_algorithm['COMPLETENESS'] = 1
+
 
     list_records, remove_samples_chr, remove_samples_startEnd = instance_cleanData.extract_sequences_counting_chr(data_first_algorithm, fasta)
     list_clean_records : List[Dict] = instance_cleanData.remove_sample_contaminated(list_records)
@@ -219,6 +221,8 @@ def ejecutar():
     # )
 
     # data_second_algorithm['proportions'] = 1
+    # data_second_algorithm['COMPLETENESS'] = 1
+
 
     # list_records, remove_samples_chr, remove_samples_startEnd = instance_cleanData.extract_sequences_counting_chr(data_second_algorithm, fasta)
     # list_clean_records : List[Dict] = instance_cleanData.remove_sample_contaminated(list_records)

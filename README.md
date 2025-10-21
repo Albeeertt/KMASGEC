@@ -40,7 +40,7 @@ Before installing the tool, you need to create another environment, this time wi
 
 ```bash
 conda config --set channel_priority strict
-conda create -n agat120 -c conda-forge -c bioconda agat=1.2.0 -y
+conda create -n katulu -c conda-forge -c bioconda agat=1.2.0 -y
 ```
 
 ### 1.2 Activate the virtual environment on Windows
