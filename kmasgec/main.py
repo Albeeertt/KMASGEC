@@ -6,6 +6,7 @@ from typing import Dict, List
 # work open 
 import argparse
 import os
+os.environ["CUDA_VISIBLE_DEVICES"] = "0,2"
 from functools import partial
 import numpy as np
 import logging
