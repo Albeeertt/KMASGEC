@@ -6,7 +6,7 @@ with open("requeriments.txt") as f:
 setup(
     name="kmasgec",
     version="0.1",
-    packages=find_packages(),
+    packages=find_packages(include=["kmasgec", "kmasgec.*"]),
     include_package_data=True,
       package_data={                    
         "kmasgec": ["models/*.pt"],
