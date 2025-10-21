@@ -172,7 +172,7 @@ def ejecutar():
         model = nn.DataParallel(model)
     criterion = nn.CrossEntropyLoss()
 
-    checkpoint = torch.load(pkg_resources.resource_filename("kmasgec", "generate_models/first.pt"), map_location=device) 
+    checkpoint = torch.load(pkg_resources.resource_filename("kmasgec", "generate_models/first_obj.pt"), map_location=device) 
     model.load_state_dict(checkpoint['model_state_dict'])
     optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
 
@@ -305,7 +305,7 @@ def ejecutar():
     #     model = nn.DataParallel(model)
     # criterion = nn.CrossEntropyLoss()
 
-    # checkpoint = torch.load(pkg_resources.resource_filename("kmasgec", "generate_models/second.pt"), map_location=device) 
+    # checkpoint = torch.load(pkg_resources.resource_filename("kmasgec", "generate_models/second_obj.pt"), map_location=device) 
     # model.load_state_dict(checkpoint['model_state_dict'])
     # optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
 
