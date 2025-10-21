@@ -10,7 +10,7 @@ from pandas import DataFrame
 
 class GenerateDataset:
 
-    def __init__(self, string_seq: bool, agrupacion: int):
+    def __init__(self, string_seq: bool, agrupacion: int, kmer: bool = False):
         self._logger = logging.getLogger(__name__)
         self._agrupacion = agrupacion
         logging.basicConfig(level=logging.INFO)
@@ -20,13 +20,16 @@ class GenerateDataset:
         else:
             bases = ['0', '1', '2', '3']
         vocab = { ''.join(codon):idx for idx, codon in enumerate(product(bases, repeat=agrupacion)) }
-        offset = len(vocab)  
-        agrupacion -= 1
-        while agrupacion != 0:
-            for group in product(bases, repeat=agrupacion):
-                vocab[''.join(group)] = offset
-                offset += 1
+        if kmer:
+            self.vocabularyComplete = vocab
+        else:
+            offset = len(vocab)  
             agrupacion -= 1
+            while agrupacion != 0:
+                for group in product(bases, repeat=agrupacion):
+                    vocab[''.join(group)] = offset
+                    offset += 1
+                agrupacion -= 1
 
         self.vocabularyComplete = vocab
 
@@ -51,9 +54,14 @@ class GenerateDataset:
             piece_of_seq = seq_record[i:i+self._agrupacion]
             piece_to_str = ''.join(piece_of_seq.astype(int).astype(str))
             new_record_seq.append(self.vocabularyComplete[piece_to_str])
-        #new_record_seq = [self.vocabularyComplete[str(int(seq_record[i:i+self._agrupacion]))] for i in range(0, len(seq_record), self._agrupacion)]
-        if y == 1: # Uno es el valor que obtiene el CDS.
-            new_record_seq = new_record_seq[1:-1]
+        return np.array(new_record_seq, dtype=dtype)
+
+    def seq_to_kmer(self, seq_record: Dict, dtype, y):
+        new_record_seq = []
+        for i in range(0, len(seq_record) - self._agrupacion + 1, 1):
+            piece_of_seq = seq_record[i:i+self._agrupacion]
+            piece_to_str = ''.join(piece_of_seq.astype(int).astype(str))
+            new_record_seq.append(self.vocabularyComplete[piece_to_str])
         return np.array(new_record_seq, dtype=dtype)
 
     def capar_cds_inicio_fin(self, record_seq: List[int], is_cds: bool):
