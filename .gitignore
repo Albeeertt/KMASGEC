@@ -1,6 +1,8 @@
 # carpetas innecesarias
 kmasgec.egg-info/
 build/
+kmasgec/generate_models/model.pt
+kmasgec/generate_models/va_third.pt
 
 # Archivos innecesarios
 .DS_Store
