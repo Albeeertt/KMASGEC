@@ -251,7 +251,7 @@ class TransformerClassifier_pool(nn.Module):
         num_layers: int = 4,
         dim_feedforward: int = 512,
         num_classes: int = 2,
-        max_seq_len: int = 512,
+        # max_seq_len: int = 512,
         dropout: float = 0.1,
         pooling: str = "mean"
     ):
@@ -274,7 +274,9 @@ class TransformerClassifier_pool(nn.Module):
         self.token_embed = nn.Embedding(vocab_size, embed_dim, padding_idx=padding_idx)
 
         # Positional embeddings
-        self.pos_embed = nn.Embedding(max_seq_len, embed_dim)
+        # self.pos_embed = nn.Embedding(max_seq_len, embed_dim)
+        div = torch.arange(0, embed_dim, 2, dtype=torch.float32) * (-math.log(10000.0) / embed_dim)
+        self.register_buffer("pos_div_term", torch.exp(div))  # [D/2]
 
         self.embed_ln = nn.LayerNorm(embed_dim)
 
@@ -304,7 +306,6 @@ class TransformerClassifier_pool(nn.Module):
                         nn.Linear(dim_feedforward, num_classes)
         )
 
-        
         if pooling == "attn":
             self.attn_score = nn.Sequential(
                 nn.Linear(embed_dim, embed_dim // 2),
@@ -314,7 +315,6 @@ class TransformerClassifier_pool(nn.Module):
 
         if pooling == "cls_token":
              self.cls_token = nn.Parameter(torch.zeros(1, 1, embed_dim))
-
     def forward(self, input_ids: torch.LongTensor, attention_mask: torch.BoolTensor = None) -> torch.Tensor:
         """
         Args:
@@ -336,9 +336,14 @@ class TransformerClassifier_pool(nn.Module):
             attention_mask = torch.cat([cls_mask, attention_mask], dim=1)
             seq_len += 1
         # Positional indices
-        positions = torch.arange(seq_len, device=input_ids.device).unsqueeze(0).expand(bsz, -1)
-        pos_emb = self.pos_embed(positions)
-        x = (token_emb * math.sqrt(self.embed_dim)) + (pos_emb * attention_mask.unsqueeze(-1))
+        # positions = torch.arange(seq_len, device=input_ids.device).unsqueeze(0).expand(bsz, -1)
+        # pos_emb = self.pos_embed(positions)
+        positions = torch.arange(seq_len, device=input_ids.device, dtype=torch.float32).unsqueeze(1)
+        pe = torch.zeros(seq_len, token_emb.size(-1), device=input_ids.device, dtype=torch.float32)
+        pe[:, 0::2] = torch.sin(positions * self.pos_div_term)
+        pe[:, 1::2] = torch.cos(positions * self.pos_div_term)
+        x = token_emb + pe.unsqueeze(0)
+        # x = (token_emb * math.sqrt(self.embed_dim)) + (pos_emb * attention_mask.unsqueeze(-1))
         x = self.embed_ln(x)
         # Transformer expects [S, B, D]
         x = x.transpose(0, 1)
@@ -416,8 +421,10 @@ class TransformerClassifier(nn.Module):
         self.token_embed = nn.Embedding(vocab_size, embed_dim, padding_idx=padding_idx)
         
         # Positional embeddings
-        self.pos_embed = nn.Embedding(max_seq_len, embed_dim)
-        
+        # self.pos_embed = nn.Embedding(max_seq_len, embed_dim)
+        div = torch.arange(0, embed_dim, 2, dtype=torch.float32) * (-math.log(10000.0) / embed_dim)
+        self.register_buffer("pos_div_term", torch.exp(div))  # [D/2]
+
         self.embed_ln = nn.LayerNorm(embed_dim)
 
         # Transformer encoder
@@ -463,9 +470,14 @@ class TransformerClassifier(nn.Module):
         attention_mask = torch.cat([cls_mask, attention_mask], dim=1)
         seq_len += 1
         # Positional indices
-        positions = torch.arange(seq_len, device=input_ids.device).unsqueeze(0).expand(bsz, -1)
-        pos_emb = self.pos_embed(positions)
-        x = (token_emb * math.sqrt(self.embed_dim)) + pos_emb
+        # positions = torch.arange(seq_len, device=input_ids.device).unsqueeze(0).expand(bsz, -1)
+        # pos_emb = self.pos_embed(positions)
+        # x = (token_emb * math.sqrt(self.embed_dim)) + pos_emb
+        positions = torch.arange(seq_len, device=input_ids.device, dtype=torch.float32).unsqueeze(1)
+        pe = torch.zeros(seq_len, token_emb.size(-1), device=input_ids.device, dtype=torch.float32)
+        pe[:, 0::2] = torch.sin(positions * self.pos_div_term)
+        pe[:, 1::2] = torch.cos(positions * self.pos_div_term)
+        x = token_emb + pe.unsqueeze(0)
         x = self.embed_ln(x)
         # Transformer expects [S, B, D]
         x = x.transpose(0, 1)
