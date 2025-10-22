@@ -212,16 +212,24 @@ def ejecutar():
     gff['Bad'] = 'No'
     print("completando")
 
-    a_places = np.asarray(all_places).astype('int64')
-    old_idx  = gff['old_idx'].to_numpy(dtype='int64')
+    a_places = np.asarray(all_places).astype('int32')
+    
 
     print("len(a_places) =", len(a_places))
-    print("len(old_idx)  =", len(old_idx))
+    print("len(old_idx)  =", len(place_fin))
 
-    print("¿Array exactamente igual (orden incluido)?", np.array_equal(a_places, old_idx))
-    if len(a_places) == len(old_idx):
-        mismatch_pos = np.flatnonzero(a_places != old_idx)
+    print("¿Array exactamente igual (orden incluido)?", np.array_equal(a_places, place_fin))
+    if len(a_places) == len(place_fin):
+        mismatch_pos = np.flatnonzero(a_places != place_fin)
         print("Nº de posiciones distintas:", mismatch_pos.size)
+
+    mask = np.isin(a_places, place_fin)          # True si a[i] está en b
+    all_in = bool(mask.all())     # True/False
+    n_missing = int((~mask).sum())# cuántos de a NO están en b
+
+    print(all_in, n_missing)
+
+    
 
     a_preds  = np.asarray(all_preds, dtype=int)
     a_trues  = np.asarray(all_trues, dtype=int)
