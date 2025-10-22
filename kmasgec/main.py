@@ -212,7 +212,17 @@ def ejecutar():
     gff['Bad'] = 'No'
     print("completando")
 
-    a_places = np.asarray(all_places)
+    a_places = np.asarray(all_places).astype('int64')
+    old_idx  = gff['old_idx'].to_numpy(dtype='int64')
+
+    print("len(a_places) =", len(a_places))
+    print("len(old_idx)  =", len(old_idx))
+
+    print("¿Array exactamente igual (orden incluido)?", np.array_equal(a_places, old_idx))
+    if len(a_places) == len(old_idx):
+        mismatch_pos = np.flatnonzero(a_places != old_idx)
+        print("Nº de posiciones distintas:", mismatch_pos.size)
+
     a_preds  = np.asarray(all_preds, dtype=int)
     a_trues  = np.asarray(all_trues, dtype=int)
 
