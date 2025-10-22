@@ -216,7 +216,13 @@ def ejecutar():
     
 
     print("len(a_places) =", len(a_places))
-    print("len(old_idx)  =", len(place_fin))
+    print("len(place_fin)  =", len(place_fin))
+    contador = len([x for x in X_fin if len(x) < 50 or len(x) > 100000])
+
+    print("Restando los que no valen:", len(place_fin) - contador)
+    print("Está dentro el valor 1065353216 en a_places? ", 1065353216 in a_places)
+    print("Está dentro el valor 1065353216 en place_fin? ", 1065353216 in place_fin)
+
 
     print("¿Array exactamente igual (orden incluido)?", np.array_equal(a_places, place_fin))
     if len(a_places) == len(place_fin):
@@ -233,7 +239,7 @@ def ejecutar():
 
     a_preds  = np.asarray(all_preds, dtype=int)
     a_trues  = np.asarray(all_trues, dtype=int)
-
+    
     labels = np.where(a_preds == 1, 'gen', 'región intergénica')
 
     gff.loc[a_places, 'Result'] = labels
