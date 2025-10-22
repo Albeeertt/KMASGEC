@@ -6,7 +6,7 @@ from typing import Dict, List
 # work open 
 import argparse
 import os
-os.environ["CUDA_VISIBLE_DEVICES"] = "0,2"
+os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 from functools import partial
 import numpy as np
 import logging
@@ -170,12 +170,16 @@ def ejecutar():
         eps=1e-6,
     )
 
-    if torch.cuda.device_count() > 1:
-        model = nn.DataParallel(model)
+    # if torch.cuda.device_count() > 1:
+    #     model = nn.DataParallel(model)
     criterion = nn.CrossEntropyLoss()
 
     checkpoint = torch.load(pkg_resources.resource_filename("kmasgec", "generate_models/first_obj.pt"), map_location=device) 
-    model.load_state_dict(checkpoint['model_state_dict'])
+    state = checkpoint['model_state_dict']
+    if torch.cuda.device_count() == 1:
+        if any(k.startswith("module.") for k in state.keys()):
+            state = {k.replace("module.", "", 1): v for k, v in state.items()}
+    model.load_state_dict(state, strict=True)
     optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
 
 
