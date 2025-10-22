@@ -201,19 +201,30 @@ def ejecutar():
     cm, all_trues, all_preds, all_places = iteration_test_oneHead(pbar_test,  model, device, criterion, 2)
     pbar_test.close()
 
+    model.to('cpu')
+    del model
+    import gc; gc.collect()
+    torch.cuda.synchronize()
+    torch.cuda.empty_cache()
 
     print("Next")
-    gff['Result'] = '0'
+    gff['Result'] = 'None'
     gff['Bad'] = 'No'
     print("completando")
 
-    for true, pred, old_idx in zip(all_trues, all_preds, all_places):
-        gff.loc[old_idx, 'Result'] = pred
-        if true != pred:
-            gff['Bad'] = 'Yes'
-    print("go go go")
+    a_places = np.asarray(all_places)
+    a_preds  = np.asarray(all_preds, dtype=int)
+    a_trues  = np.asarray(all_trues, dtype=int)
 
-    gff.to_csv(route_out+'prueba.csv', sep=',')
+    labels = np.where(a_preds == 1, 'gen', 'región intergénica')
+
+    gff.loc[a_places, 'Result'] = labels
+    bad_mask = a_trues != a_preds
+    bad_idx  = a_places[bad_mask] 
+    gff.loc[bad_idx, 'Bad'] = 'Yes'
+
+
+    gff.to_csv(route_out+'result.csv', sep=',')
 
 
         # Second Data
@@ -339,4 +350,27 @@ def ejecutar():
     # pbar_test = tqdm(loader_test, total=n_batches_test, desc="Test")
     # cm, all_trues, all_preds, all_places = iteration_test_oneHead(pbar_test,  model, device, criterion, 3)
     # pbar_test.close()
+
+
+    # model.to('cpu')
+    # del model
+    # import gc; gc.collect()
+    # torch.cuda.synchronize()
+    # torch.cuda.empty_cache()
+
+    # print("Next")
+    # gff['Result'] = 'None'
+    # gff['Bad'] = 'No'
+    # print("completando")
+
+    # a_places = np.asarray(all_places)
+    # a_preds  = np.asarray(all_preds, dtype=int)
+    # a_trues  = np.asarray(all_trues, dtype=int)
+
+    # labels = np.where(a_preds == 1, 'gen', 'región intergénica')
+
+    # gff.loc[a_places, 'Result'] = labels
+    # bad_mask = a_trues != a_preds
+    # bad_idx  = a_places[bad_mask] 
+    # gff.loc[bad_idx, 'Bad'] = 'Yes'
 
