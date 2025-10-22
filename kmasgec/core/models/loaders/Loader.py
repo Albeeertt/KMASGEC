@@ -91,7 +91,7 @@ class Base64JSONIterableDataset(Dataset):
         Y_tensor = torch.tensor(Y_arr, dtype=torch.long) 
 
         place = base64.b64decode(sample["Place"]["data"])
-        place = np.frombuffer(Y_decoded,
+        place = np.frombuffer(place,
             dtype=sample["Place"]["dtype"]
         ).reshape(sample["Place"]["shape"]).copy()
         place = int(place.flatten()[0])

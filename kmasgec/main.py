@@ -109,7 +109,7 @@ def ejecutar():
 
     X_fin = [np.asarray(i, dtype=np.float32) for i in X]
     y_fin = [np.asarray(i, dtype=np.float32) for i in y]
-    place_fin = [np.asarray(i, dtype=np.int32) for i in place]
+    place_fin = [np.asarray(i, dtype=np.int64) for i in place]
     save_all_to_json(X_fin, y_fin, place_fin, filename=ruta_data_first_algorithm, names=['X', 'Y', 'Place'])
 
 
@@ -212,7 +212,7 @@ def ejecutar():
     gff['Bad'] = 'No'
     print("completando")
 
-    a_places = np.asarray(all_places).astype('int32')
+    a_places = np.asarray(all_places, dtype=np.int64)
     
 
     print("len(a_places) =", len(a_places))
@@ -220,14 +220,7 @@ def ejecutar():
     contador = len([x for x in X_fin if len(x) < 50 or len(x) > 100000])
 
     print("Restando los que no valen:", len(place_fin) - contador)
-    print("Está dentro el valor 1065353216 en a_places? ", 1065353216 in a_places)
-    print("Está dentro el valor 1065353216 en place_fin? ", 1065353216 in place_fin)
-
-
     print("¿Array exactamente igual (orden incluido)?", np.array_equal(a_places, place_fin))
-    if len(a_places) == len(place_fin):
-        mismatch_pos = np.flatnonzero(a_places != place_fin)
-        print("Nº de posiciones distintas:", mismatch_pos.size)
 
     mask = np.isin(a_places, place_fin)          # True si a[i] está en b
     all_in = bool(mask.all())     # True/False
