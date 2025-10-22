@@ -6,7 +6,7 @@ from typing import Dict, List
 # work open 
 import argparse
 import os
-os.environ["CUDA_VISIBLE_DEVICES"] = "0,2"
+os.environ["CUDA_VISIBLE_DEVICES"] = "2"
 from functools import partial
 import numpy as np
 import logging
@@ -197,13 +197,17 @@ def ejecutar():
     cm, all_trues, all_preds, all_places = iteration_test_oneHead(pbar_test,  model, device, criterion, 2)
     pbar_test.close()
 
+
+    print("Next")
     gff['Result'] = '0'
     gff['Bad'] = 'No'
+    print("completando")
 
     for true, pred, old_idx in zip(all_trues, all_preds, all_places):
         gff.loc[old_idx, 'Result'] = pred
         if true != pred:
             gff['Bad'] = 'Yes'
+    print("go go go")
 
     gff.to_csv(route_out+'prueba.csv', sep=',')
 

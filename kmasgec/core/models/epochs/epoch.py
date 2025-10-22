@@ -262,13 +262,14 @@ def iteration_test_oneHead(
     all_preds = []
     all_places = []
 
+    criterion = criterion.to(device)
+
     with torch.no_grad():
         for seqs, types, mask, place in dataloader:
             # types: [B], seqs: [B, L], mask: [B, L]
             labels = types.to(device)
             input_ids = seqs.to(device)
             attention_mask = mask.to(device)
-            criterion = criterion.to(device)
 
             batch_size = labels.size(0)
 
@@ -276,7 +277,7 @@ def iteration_test_oneHead(
             preds = outputs.argmax(dim=1)
             correct = (preds == labels).sum().item()
 
-            total_acc   += correct * batch_size
+            total_acc   += correct
             total_count += batch_size
 
             all_trues.extend(labels.cpu().tolist())
@@ -303,6 +304,7 @@ def iteration_test_oneHead(
     for cls_idx, acc in enumerate(per_class_acc):
         print(f"  Clase {cls_idx}: {acc:.4f}")
     print("--------------------------------------------------")
+    print("Fin")
     return cm, all_trues, all_preds, all_places
 
 
