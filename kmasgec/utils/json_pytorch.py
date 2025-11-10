@@ -25,7 +25,7 @@ def merge_json(files : List[str], min_len_seq: int, max_len_seq: int, limit: Dic
                         out.write(line if line.endswith("\n") else (line + "\n"))
                         contador[Y_arr] += 1
 
-def split_records_species(*species, max_len: int, route_out: str):
+def split_records_species(*species, max_len: int, overlap: int, route_out: str):
     def toBase64(array):
         array_bytes = array.tobytes()
         array_b64 = base64.b64encode(array_bytes).decode("utf-8")
@@ -34,6 +34,7 @@ def split_records_species(*species, max_len: int, route_out: str):
             "dtype": str(array.dtype),
             "data": array_b64
         }
+    list_route_out = []
     for specie in species:
         specie_name = (specie.split('/')[-1]).split('.')[0]
         route_specie_out: str = f'{route_out}{specie_name}_split.json'
@@ -42,28 +43,44 @@ def split_records_species(*species, max_len: int, route_out: str):
                 for line in f:
                     sample = orjson.loads(line)
                     X_shape = int(sample['X']['shape'][0])
+                    Y_decoded = base64.b64decode(sample["Y"]["data"])
+                    Y_arr = np.frombuffer(Y_decoded,
+                            dtype=sample["Y"]["dtype"]
+                    ).reshape(sample["Y"]["shape"]).copy()
+                    Y_arr = int(Y_arr.flatten()[0])
+                    # TODO: borrar esta parte
+                    start_decoded = base64.b64decode(sample['START']['data'])
+                    start_rec = np.frombuffer(start_decoded, dtype=sample['START']['dtype']).reshape(sample['START']['shape']).copy()
+                    end_decoded = base64.b64decode(sample['END']['data'])
+                    end_rec = np.frombuffer(end_decoded, dtype=sample['END']['dtype']).reshape(sample['END']['shape']).copy()
+                    if Y_arr == 2:
+                        continue
                     if X_shape > max_len:
                         X_decoded = base64.b64decode(sample['X']['data'])
                         X_full = np.frombuffer(X_decoded, dtype=np.dtype(sample['X']['dtype'])).reshape(sample["X"]["shape"]).copy()
-                        num_full_chunks = X_shape // max_len
-                        remainder = X_shape % max_len
-                        for i in range(num_full_chunks):
-                            start = i * max_len
+                        for start in range(0, (X_shape - max_len + 1), (max_len-overlap)):
                             end = start + max_len
                             x_chunk = X_full[start:end]
                             new_sample = dict(sample)
                             new_sample["X"] = toBase64(x_chunk)
-                            # out.write(orjson.dumps(new_sample).decode("utf-8") + "\n")
+                            new_sample["START"] = toBase64(start_rec+start)
+                            new_sample['END'] = toBase64(start_rec+end)
                             json.dump(new_sample, out)
                             out.write("\n")
-                        if remainder != 0:
-                            x_chunk = X_full[-remainder:]
+                        if ((X_shape - max_len) % (max_len - overlap))  != 0:
+                            start = end
+                            end = X_shape
+                            x_chunk = X_full[start:end]
                             new_sample = dict(sample)
                             new_sample["X"] = toBase64(x_chunk)
+                            new_sample['START'] = toBase64(start_rec+start)
+                            new_sample['END'] = toBase64(end_rec)
                             json.dump(new_sample, out)
                             out.write("\n")
                     else:
                         out.write(line if line.endswith("\n") else (line + "\n"))
+        list_route_out.append(route_specie_out)
+    return route_specie_out
 
 def save_all_to_json(*chunks , filename, names):
 

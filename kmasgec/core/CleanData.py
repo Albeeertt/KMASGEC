@@ -241,11 +241,11 @@ class CleanData:
         for record in list_bed:
             fasta_a_usar : str = str(record['chr'])
             if fasta_a_usar not in list(fasta.keys()):
-                problemas_chr.append(fasta_a_usar)
+                problemas_chr.append(record['old_idx'])
                 continue
             fasta_file : str = fasta[fasta_a_usar]
             if record['start'] > record['end']:
-                remove_samples.append(record['type'])
+                remove_samples.append(record['old_idx'])
                 continue
             elif (record['strand'] == '+') or  (record['strand'] == '.'):
                 final_dataset.append({'seq': fasta_file[record['start']-1:record['end']], 'type': record['type'], 'old_idx': record['old_idx'], 'proportions': record['proportions'], 'COMPLETENESS': record['COMPLETENESS']})
@@ -306,7 +306,7 @@ class CleanData:
             elif dict_ids_record.get(record['Parent'], -1) != -1 and dict_ids_record[record['Parent']]['type'] == 'gene' and gene_mRNA_record.get(record['Parent'], -1) != -1:
                 records_genes_produce_mRNA.append(record)
             else:
-                remove_elements.append(record)
+                remove_elements.append(record['old_idx'])
 
         if check:
             check_list_records = [record for record in list_records if record['type'] in ('gene', 'mRNA', 'exon', 'intron', 'CDS', 'three_prime_UTR', 'five_prime_UTR', 'UTR')]
@@ -322,6 +322,7 @@ class CleanData:
         '''Elimina las muestras contaminadas, es decir, la que no contienen el nucleótido A, C, T o G.'''
 
         clean_final_dataset : List = []
+        list_remove: List = []
         count_contaminated = 0
 
         for record in dataset:
@@ -329,6 +330,7 @@ class CleanData:
             if not contaminada and record['seq'] != "":
                 clean_final_dataset.append(record)
             else:
+                list_remove.append(record['old_idx'])
                 count_contaminated += 1
 
         if check:
@@ -337,7 +339,7 @@ class CleanData:
             self._logger.info(count_contaminated)
         
         self.dataset = clean_final_dataset
-        return clean_final_dataset
+        return clean_final_dataset, list_remove
 
 
 
@@ -667,8 +669,10 @@ class Gene_limits:
             for  percentage, new_length in zip(percentage_new_sequences, length_new_sequences):
                 copy_record = record.copy()
                 if percentage > LIMIT:
-                    copy_record['start'] = random.randint(copy_record['start'], copy_record['end'] - new_length + 1)
-                    copy_record['end'] = copy_record['start'] + new_length - 1
+                    # TODO: cambiar esto por favor.
+                    # copy_record['start'] = random.randint(copy_record['start'], copy_record['end'] - new_length + 1)
+                    # copy_record['end'] = copy_record['start'] + new_length - 1
+                    copy_record['start'] = copy_record['end'] - new_length + 1
                 else:
                     value_1 = random.randint(copy_record['start'], copy_record['end'])
                     if value_1+new_length-1 > copy_record['end']:
@@ -677,7 +681,7 @@ class Gene_limits:
                     else:
                         copy_record['start'] = value_1
                         copy_record['end'] = value_1+new_length-1
-                copy_record['COMPLETENESS'] = round((copy_record['end']- copy_record['start'] + 1)/ length_gene, 2)
+                copy_record['COMPLETENESS'] = percentage # round((copy_record['end']- copy_record['start'] + 1)/ length_gene, 2)
                 new_records.append(copy_record)
 
         return pd.DataFrame(new_records)

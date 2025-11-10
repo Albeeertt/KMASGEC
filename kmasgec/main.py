@@ -69,7 +69,7 @@ def ejecutar():
     gff = instance_cleanData.obtain_gff(ruta_data_gff, encoding='latin-1')
     fasta = instance_cleanData.obtain_dicc_fasta(ruta_data_fasta)
 
-    elements_plus_te_mRNA, remove_elements = instance_cleanData.obtain_gene_w_mRNA(gff, ['intergenic_region'], False, False)
+    elements_plus_te_mRNA, remove_idx_mRNA = instance_cleanData.obtain_gene_w_mRNA(gff, ['intergenic_region'], False, False)
     dataframe_elements_plus_te_mRNA = pd.DataFrame(elements_plus_te_mRNA)
 
 
@@ -80,19 +80,19 @@ def ejecutar():
     data_first_algorithm = dataframe_elements_plus_te_mRNA[dataframe_elements_plus_te_mRNA['type'].isin(['intergenic_region', 'gene'])]
 
     data_first_algorithm[['start','end']] = data_first_algorithm[['start','end']].apply(pd.to_numeric, errors='coerce')
-    data_first_algorithm = (
-    data_first_algorithm
-      .drop_duplicates(subset=['chr','type','start','end'])
-      .loc[lambda df: df['end'] >= df['start']]
-      .reset_index(drop=True)
-    )
+    # data_first_algorithm = (
+    # data_first_algorithm
+    #   .drop_duplicates(subset=['chr','type','start','end'])
+    #   .loc[lambda df: df['end'] >= df['start']]
+    #   .reset_index(drop=True)
+    # )
 
     data_first_algorithm['proportions'] = 1
     data_first_algorithm['COMPLETENESS'] = 1
 
 
-    list_records, remove_samples_chr, remove_samples_startEnd = instance_cleanData.extract_sequences_counting_chr(data_first_algorithm, fasta)
-    list_clean_records : List[Dict] = instance_cleanData.remove_sample_contaminated(list_records)
+    list_records, remove_idx_chr, remove_idx_startEnd = instance_cleanData.extract_sequences_counting_chr(data_first_algorithm, fasta)
+    list_clean_records, remove_contaminated = instance_cleanData.remove_sample_contaminated(list_records)
 
     vocab = {'A': 0, 'C': 1, 'G': 2, 'T': 3}
     X = []
@@ -207,35 +207,34 @@ def ejecutar():
     torch.cuda.synchronize()
     torch.cuda.empty_cache()
 
-    print("Next")
     gff['Result'] = 'None'
     gff['Bad'] = 'No'
-    print("completando")
 
     a_places = np.asarray(all_places, dtype=np.int64)
-    
-
-    print("len(a_places) =", len(a_places))
-    print("len(place_fin)  =", len(place_fin))
-    contador = len([x for x in X_fin if len(x) < 50 or len(x) > 100000])
-
-    print("Restando los que no valen:", len(place_fin) - contador)
-    print("¿Array exactamente igual (orden incluido)?", np.array_equal(a_places, place_fin))
-
-    mask = np.isin(a_places, place_fin)          # True si a[i] está en b
-    all_in = bool(mask.all())     # True/False
-    n_missing = int((~mask).sum())# cuántos de a NO están en b
-
-    print(all_in, n_missing)
-
-    
-
     a_preds  = np.asarray(all_preds, dtype=int)
     a_trues  = np.asarray(all_trues, dtype=int)
+    a_remove_idx_mRNA = np.asarray(remove_idx_mRNA, dtype=np.int64)
+    a_remove_idx_chr = np.asarray(remove_idx_chr, dtype=np.int64)
+    a_remove_idx_startEnd = np.asarray(remove_idx_startEnd, dtype=np.int64)
+    a_remove_contaminated = np.asarray(remove_contaminated, dtype=np.int64)
+
+
     
     labels = np.where(a_preds == 1, 'gen', 'región intergénica')
 
     gff.loc[a_places, 'Result'] = labels
+    gff.loc[a_remove_idx_mRNA, 'Result'] = 'No-mRNA'
+    gff.loc[a_remove_idx_mRNA, 'Bad'] = 'Not-considered'
+
+    gff.loc[a_remove_idx_chr, 'Result'] = 'No-fasta'
+    gff.loc[a_remove_idx_chr, 'Bad'] = 'Not-considered'
+
+    gff.loc[a_remove_idx_startEnd, 'Result'] = 'Start_bigger_than_end'
+    gff.loc[a_remove_idx_startEnd, 'Bad'] = 'Not-considered'
+
+    gff.loc[a_remove_contaminated, 'Result'] = 'Contaminated'
+    gff.loc[a_remove_contaminated, 'Bad'] = 'Not-considered'
+
     bad_mask = a_trues != a_preds
     bad_idx  = a_places[bad_mask] 
     gff.loc[bad_idx, 'Bad'] = 'Yes'
