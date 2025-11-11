@@ -119,7 +119,7 @@ def ejecutar():
     # ---------------------------------------------------------------------------------------------
 
     batch_size: int = args.batch_size
-    min_len_seq: Dict[int, int] = {0: 0, 1: 0} # {0: 50, 1: 50, 2: 50, 3: 50}
+    min_len_seq: Dict[int, int] = {0: 10, 1: 10, 2: 10, 3: 10}
     agrupacion = 6
     kmer: bool = False
     instance_generateDataset  = GenerateDataset(False, agrupacion, kmer)
