@@ -119,7 +119,7 @@ def ejecutar():
     # ---------------------------------------------------------------------------------------------
 
     batch_size: int = args.batch_size
-    min_len_seq: Dict[int, int] = {0: 50, 1: 50, 2: 50, 3: 50}
+    min_len_seq: Dict[int, int] = {0: 0, 1: 0} # {0: 50, 1: 50, 2: 50, 3: 50}
     agrupacion = 6
     kmer: bool = False
     instance_generateDataset  = GenerateDataset(False, agrupacion, kmer)
@@ -130,7 +130,7 @@ def ejecutar():
     proportions = True
 
 
-    max_len_seq = 100000
+    max_len_seq = 1000000 # 100000
     learning_rate = 2e-4
     weight_decay= 5e-3
     #device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
