@@ -6,7 +6,16 @@ from typing import Dict, List
 # work open 
 import argparse
 import os
-os.environ["CUDA_VISIBLE_DEVICES"] = "0"
+
+def obtener_argumentos_pre():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--gpus', type=str, default="", help="GPUs a usar, e.g. '0', '0,1', '0,2,3'", required=True)
+    known, _ = parser.parse_known_args()
+    return known
+
+pre_args = obtener_argumentos_pre()
+
+os.environ["CUDA_VISIBLE_DEVICES"] = pre_args.gpus
 from functools import partial
 import numpy as np
 import logging
@@ -42,9 +51,7 @@ def obtener_argumentos():
     parser.add_argument('--add_labels', action='store_true', help="Add introns, intergenic regions and keep the longest isoform")
     parser.add_argument('--fine_tunning', action='store_true', help="")
     parser.add_argument('--train', action='store_true', help="Si deseas entrenar un modelo desde cero")
-    # parser.add_argument('--gpu', action='store_true', help="")
 
-    
     # Analizar los argumentos pasados por el usuario
     return parser.parse_args()
 
