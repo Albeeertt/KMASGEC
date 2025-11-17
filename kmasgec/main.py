@@ -52,14 +52,19 @@ def obtener_argumentos():
 def ejecutar():
     args = obtener_argumentos()
 
+    route_out = args.out
+    if not os.path.exists(route_out):
+        os.mkdir(route_out)
+        
+    route_out = route_out+'/' if not route_out.endswith('/') else route_out
+        
     if args.add_labels:
-        route_out: str = ("/".join(args.gff.split("/")[:-1]))+"/"
         instance_agat = Agat("katulu")
         new_route_gff = instance_agat.add_introns(args.gff, route_out)
         new_route_gff = instance_agat.add_intergenicRegion(new_route_gff, route_out)
-        args.gff = instance_agat.keep_longest_isoform(new_route_gff, route_out) #TODO: borrar esto
+        args.gff = instance_agat.keep_longest_isoform(new_route_gff, route_out)
 
-    route_out = args.out
+    
     ruta_data_first_algorithm = route_out+'first.json'
     ruta_data_second_algorithm = route_out+'second.json'
     ruta_data_gff = args.gff
