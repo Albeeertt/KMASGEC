@@ -190,9 +190,13 @@ def ejecutar():
 
     checkpoint = torch.load(pkg_resources.resource_filename("kmasgec", "generate_models/first_obj.pt"), map_location=device) 
     state = checkpoint['model_state_dict']
-    if torch.cuda.device_count() == 1:
+
+    if len(pre_args.gpus.split(',')) == 1:
+        print("una gpu")
         if any(k.startswith("module.") for k in state.keys()):
             state = {k.replace("module.", "", 1): v for k, v in state.items()}
+    else:
+        print("varias gpus; no hacemos nada")
     model.load_state_dict(state, strict=True)
     optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
 
