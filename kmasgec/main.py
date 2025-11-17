@@ -52,6 +52,7 @@ def obtener_argumentos():
     parser.add_argument('--add_labels', action='store_true', help="Add introns, intergenic regions and keep the longest isoform")
     parser.add_argument('--fine_tunning', action='store_true', help="")
     parser.add_argument('--train', action='store_true', help="Si deseas entrenar un modelo desde cero")
+    parser.add_argument('--gpus', type=str, default="", help="GPUs a usar, e.g. '0', '0,1', '0,2,3'", required=True) # TODO: ignorar, hacer un único parser y ya.
 
     # Analizar los argumentos pasados por el usuario
     return parser.parse_args()
