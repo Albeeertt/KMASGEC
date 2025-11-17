@@ -192,11 +192,10 @@ def ejecutar():
     state = checkpoint['model_state_dict']
 
     if len(pre_args.gpus.split(',')) == 1:
-        print("una gpu")
         if any(k.startswith("module.") for k in state.keys()):
             state = {k.replace("module.", "", 1): v for k, v in state.items()}
     else:
-        print("varias gpus; no hacemos nada")
+        model = nn.DataParallel(model)
     model.load_state_dict(state, strict=True)
     optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
 
