@@ -297,15 +297,16 @@ def iteration_test_oneHead(
 
     print(f"Accuracy en test: {epoch_acc:.4f}")
     print("--------------------------------------------------")
+    report_dict = classification_report(all_trues, all_preds, digits=4, output_dict=True)
+    cm = confusion_matrix(
+        all_trues,
+        all_preds
+    )
+    cm_list = cm.tolist()
+    report_dict["confusion_matrix"] = cm_list
 
-    cm = confusion_matrix(all_trues, all_preds, labels=list(range(num_classes)))
-    per_class_acc = cm.diagonal() / cm.sum(axis=1)
-    print("Accuracy por clase:")
-    for cls_idx, acc in enumerate(per_class_acc):
-        print(f"  Clase {cls_idx}: {acc:.4f}")
-    print("--------------------------------------------------")
     print("Fin")
-    return cm, all_trues, all_preds, all_places
+    return report_dict, all_trues, all_preds, all_places
 
 
 def test(

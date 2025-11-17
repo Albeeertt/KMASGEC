@@ -25,6 +25,7 @@ from torch.utils.data import DataLoader
 from tqdm import tqdm
 import pkg_resources
 import pandas as pd
+import json
 
 logging.basicConfig(
     level=logging.INFO,
@@ -210,7 +211,7 @@ def ejecutar():
 
 
     pbar_test = tqdm(loader_test, total=n_batches_test, desc="Test")
-    cm, all_trues, all_preds, all_places = iteration_test_oneHead(pbar_test,  model, device, criterion, 2)
+    report_dict, all_trues, all_preds, all_places = iteration_test_oneHead(pbar_test,  model, device, criterion, 2)
     pbar_test.close()
 
     model.to('cpu')
@@ -253,6 +254,10 @@ def ejecutar():
 
 
     gff.to_csv(route_out+'result.csv', sep=',')
+    with open(route_out+'report.json', "a") as f:
+        json.dump(report_dict, f, indent=4)
+
+    os.remove(ruta_data_first_algorithm)
 
 
         # Second Data
