@@ -227,8 +227,8 @@ def ejecutar():
 
     gff['Result'] = 'None'
     gff['Bad'] = 'No'
-    gff['prob_gene'] = 0
-    gff['prob_intergenic_region'] = 0
+    gff['prob_gene'] = np.nan
+    gff['prob_intergenic_region'] = np.nan
 
     a_places = np.asarray(all_places, dtype=np.int64)
     a_preds  = np.asarray(all_preds, dtype=int)
