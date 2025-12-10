@@ -216,7 +216,7 @@ def ejecutar():
 
 
     pbar_test = tqdm(loader_test, total=n_batches_test, desc="Test")
-    report_dict, all_trues, all_preds, all_places = iteration_test_oneHead(pbar_test,  model, device, criterion, 2)
+    report_dict, all_trues, all_preds, all_places, all_softmax_official_values = iteration_test_oneHead(pbar_test,  model, device, criterion, 2)
     pbar_test.close()
 
     model.to('cpu')
@@ -227,10 +227,14 @@ def ejecutar():
 
     gff['Result'] = 'None'
     gff['Bad'] = 'No'
+    gff['prob_gene'] = 0
+    gff['prob_intergenic_region'] = 0
 
     a_places = np.asarray(all_places, dtype=np.int64)
     a_preds  = np.asarray(all_preds, dtype=int)
     a_trues  = np.asarray(all_trues, dtype=int)
+    probs_ir = np.asarray([ element[0] for element in all_softmax_official_values], dtype=np.float16)
+    probs_gene = np.asarray([ element[1] for element in all_softmax_official_values], dtype=np.float16)
     a_remove_idx_mRNA = np.asarray(remove_idx_mRNA, dtype=np.int64)
     a_remove_idx_chr = np.asarray(remove_idx_chr, dtype=np.int64)
     a_remove_idx_startEnd = np.asarray(remove_idx_startEnd, dtype=np.int64)
@@ -252,6 +256,9 @@ def ejecutar():
 
     gff.loc[a_remove_contaminated, 'Result'] = 'Contaminated'
     gff.loc[a_remove_contaminated, 'Bad'] = 'Not-considered'
+
+    gff.loc[a_places, 'prob_gene'] = probs_gene
+    gff.loc[a_places, 'prob_intergenic_region'] = probs_ir
 
     bad_mask = a_trues != a_preds
     bad_idx  = a_places[bad_mask] 

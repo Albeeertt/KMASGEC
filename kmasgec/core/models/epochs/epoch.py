@@ -261,6 +261,7 @@ def iteration_test_oneHead(
     all_trues = []
     all_preds = []
     all_places = []
+    all_softmax_official_values = []
 
     criterion = criterion.to(device)
 
@@ -283,6 +284,7 @@ def iteration_test_oneHead(
             all_trues.extend(labels.cpu().tolist())
             all_preds.extend(preds.cpu().tolist())
             all_places.extend(list(place))
+            all_softmax_official_values.extend(F.softmax(outputs, dim=1))
 
             loss     = criterion(outputs, labels)
             total_val_loss     += loss.item() * batch_size
@@ -306,7 +308,7 @@ def iteration_test_oneHead(
     report_dict["confusion_matrix"] = cm_list
 
     print("Fin")
-    return report_dict, all_trues, all_preds, all_places
+    return report_dict, all_trues, all_preds, all_places, all_softmax_official_values
 
 
 def test(
