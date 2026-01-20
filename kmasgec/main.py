@@ -199,8 +199,6 @@ def ejecutar():
         eps=1e-6,
     )
 
-    # if torch.cuda.device_count() > 1:
-    #     model = nn.DataParallel(model)
     criterion = nn.CrossEntropyLoss()
 
     if args.small_algorithm:

@@ -19,7 +19,7 @@ class Agat:
             "--out",
             route_out+name_out
         ]
-        cmd_str = ' '.join(cmd) + ' > /dev/null 2>&1'
+        cmd_str = ' '.join(cmd) # + ' > /dev/null 2>&1'
         subprocess.run(cmd_str, check=True, shell=True)
         return route_out+name_out
 
@@ -36,7 +36,7 @@ class Agat:
             "--out",
             route_out+name_out
         ]
-        cmd_str = ' '.join(cmd) + ' > /dev/null 2>&1'
+        cmd_str = ' '.join(cmd) #  + ' > /dev/null 2>&1'
         subprocess.run(cmd_str, shell=True, check=True)
         return route_out+name_out
     
@@ -53,7 +53,7 @@ class Agat:
             "--out",
             route_out+name_out
         ]
-        cmd_str = ' '.join(cmd) + ' > /dev/null 2>&1'
+        cmd_str = ' '.join(cmd) #  + ' > /dev/null 2>&1'
         subprocess.run(cmd_str, shell=True, check=True)
         return route_out+name_out
         
