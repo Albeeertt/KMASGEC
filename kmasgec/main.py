@@ -54,7 +54,7 @@ def obtener_argumentos():
     parser.add_argument('--train', action='store_true', help="Si deseas entrenar un modelo desde cero")
     parser.add_argument('--gpus', type=str, default="", help="GPUs a usar, e.g. '0', '0,1', '0,2,3'", required=True) # TODO: ignorar, hacer un único parser y ya.
     parser.add_argument('--json', type=str, required=False) # TODO: Borrar este parámetro
-    parser.add_argument("--small_algorithm", type=bool, required=False, help="Uso del algoritmo pequeño, menos preciso pero más rápido.")
+    parser.add_argument("--small_algorithm", action="store_true", help="Uso del algoritmo pequeño, menos preciso pero más rápido.")
 
     # Analizar los argumentos pasados por el usuario
     return parser.parse_args()
