@@ -440,9 +440,9 @@ class TransformerClassifier(nn.Module):
             encoder_layer,
             num_layers=num_layers
         )
-        self.dropout = nn.Dropout(dropout)
+        # self.dropout = nn.Dropout(dropout)
         
-        self.pre_head_ln = nn.LayerNorm(embed_dim)
+        # self.pre_head_ln = nn.LayerNorm(embed_dim)
 
         self.classifier = nn.Sequential(
             nn.Linear(embed_dim, dim_feedforward),
@@ -490,9 +490,9 @@ class TransformerClassifier(nn.Module):
         x = self.transformer(x, src_key_padding_mask=key_padding_mask)  # [L+1, B, D]
         # Extract CLS representation
         cls_repr = x[0]  # [B, D]
-        cls_repr = self.pre_head_ln(cls_repr)
+        # cls_repr = self.pre_head_ln(cls_repr)
         # Classification
-        cls_repr = self.dropout(cls_repr)
+        # cls_repr = self.dropout(cls_repr)
         logits = self.classifier(cls_repr)  # [B, C]
         return logits
 
