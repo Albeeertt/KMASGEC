@@ -40,7 +40,7 @@ from kmasgec.utils.agat import Agat
 from kmasgec.utils.json_pytorch import save_all_to_json
 from kmasgec.core.models.loaders.Loader import Base64JSONIterableDataset, collate_fn_oneHead
 from kmasgec.core.models.epochs.epoch import iteration_test_oneHead
-from kmasgec.core.models.model_architecture.transformers import TransformerClassifier_pool
+from kmasgec.core.models.model_architecture.transformers import TransformerClassifier_pool, TransformerClassifier
 
 def obtener_argumentos():
     parser = argparse.ArgumentParser()
@@ -54,6 +54,7 @@ def obtener_argumentos():
     parser.add_argument('--train', action='store_true', help="Si deseas entrenar un modelo desde cero")
     parser.add_argument('--gpus', type=str, default="", help="GPUs a usar, e.g. '0', '0,1', '0,2,3'", required=True) # TODO: ignorar, hacer un único parser y ya.
     parser.add_argument('--json', type=str, required=False) # TODO: Borrar este parámetro
+    parser.add_argument("--small_algorithm", type=bool, required=False, help="Uso del algoritmo pequeño, menos preciso pero más rápido.")
 
     # Analizar los argumentos pasados por el usuario
     return parser.parse_args()
@@ -153,17 +154,30 @@ def ejecutar():
     torch.cuda.empty_cache()
     print(device)
     print("Cargando modelo...")
-    model =  TransformerClassifier_pool (
-        vocab_size=vocab_size,
-        padding_idx=padding_value,
-        embed_dim=256, # 256
-        num_heads=8,
-        num_layers=4, # 4
-        dim_feedforward=1024, # 3072
-        num_classes=2, # Multi class problem (gene, intergenic_region) 
-        dropout=0.2,
-        pooling = "cls_token"
-    )
+    if args.small_algorithm:
+        model = TransformerClassifier( 
+            vocab_size=vocab_size,
+            padding_idx=padding_value,
+            embed_dim=128, 
+            num_heads=8,
+            num_layers=2, 
+            dim_feedforward=512, 
+            num_classes=2, 
+            dropout=0.2
+        )
+    else:
+        model = TransformerClassifier_pool ( # El que generaliza sobre muchas especies y el que no tienen los mismos parámetros.
+            vocab_size=vocab_size,
+            padding_idx=padding_value,
+            embed_dim=256, 
+            num_heads=8,
+            num_layers=4, 
+            dim_feedforward=1024, 
+            num_classes=2, 
+            dropout=0.2,
+            pooling = "cls_token"
+        )
+    torch.compile(model)
     model = model.to(device)
 
 
@@ -189,8 +203,12 @@ def ejecutar():
     #     model = nn.DataParallel(model)
     criterion = nn.CrossEntropyLoss()
 
-    checkpoint = torch.load(pkg_resources.resource_filename("kmasgec", "generate_models/first_obj.pt"), map_location=device) 
-    state = checkpoint['model_state_dict']
+    if args.small_algorithm:
+        checkpoint = torch.load(pkg_resources.resource_filename("kmasgec", "generate_models/all_generic_low_1.pt"), map_location=device) 
+        state = checkpoint['model_state_dict']
+    else:
+        checkpoint = torch.load(pkg_resources.resource_filename("kmasgec", "generate_models/all_generic_big_1.pt"), map_location=device) # first_obj.pt
+        state = checkpoint['model_state_dict']
 
     if len(pre_args.gpus.split(',')) == 1:
         if any(k.startswith("module.") for k in state.keys()):
