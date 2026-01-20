@@ -425,7 +425,7 @@ class TransformerClassifier(nn.Module):
         div = torch.arange(0, embed_dim, 2, dtype=torch.float32) * (-math.log(10000.0) / embed_dim)
         self.register_buffer("pos_div_term", torch.exp(div))  # [D/2]
 
-        self.embed_ln = nn.LayerNorm(embed_dim)
+        # self.embed_ln = nn.LayerNorm(embed_dim)
 
         # Transformer encoder
         encoder_layer = nn.TransformerEncoderLayer(
@@ -442,7 +442,7 @@ class TransformerClassifier(nn.Module):
         )
         # self.dropout = nn.Dropout(dropout)
         
-        # self.pre_head_ln = nn.LayerNorm(embed_dim)
+        self.pre_head_ln = nn.LayerNorm(embed_dim)
 
         self.classifier = nn.Sequential(
             nn.Linear(embed_dim, dim_feedforward),
@@ -478,7 +478,7 @@ class TransformerClassifier(nn.Module):
         pe[:, 0::2] = torch.sin(positions * self.pos_div_term)
         pe[:, 1::2] = torch.cos(positions * self.pos_div_term)
         x = token_emb + pe.unsqueeze(0)
-        x = self.embed_ln(x)
+        # x = self.embed_ln(x)
         # Transformer expects [S, B, D]
         x = x.transpose(0, 1)
         # Build extended mask for CLS + tokens
@@ -490,7 +490,7 @@ class TransformerClassifier(nn.Module):
         x = self.transformer(x, src_key_padding_mask=key_padding_mask)  # [L+1, B, D]
         # Extract CLS representation
         cls_repr = x[0]  # [B, D]
-        # cls_repr = self.pre_head_ln(cls_repr)
+        cls_repr = self.pre_head_ln(cls_repr)
         # Classification
         # cls_repr = self.dropout(cls_repr)
         logits = self.classifier(cls_repr)  # [B, C]
