@@ -297,15 +297,19 @@ class CleanData:
         records_genes_produce_mRNA = []
         remove_elements = []
         for record in list_records:
+            # Tienen que tener padre, a si que se eliminan chr, ri y genes; solo quedan exones, CDS, UTRs, intrones y mRNA o cosas varias. Como se pone la condición de que el padre debe de ser mRNA entonces se busca las subpartes del mRNA.
             if dict_ids_record.get(record['Parent'], -1) != -1 and dict_ids_record[record['Parent']]['type'] == 'mRNA':
                 records_genes_produce_mRNA.append(record)
+            # Si es mRNA también entra, claro.
             elif record['type'] == "mRNA":
                 records_genes_produce_mRNA.append(record)
+            # Si es gen y produce mRNA también lo metemos.
             elif record['type'] == "gene" and gene_mRNA_record.get(record['ID'], -1) != -1:
                 records_genes_produce_mRNA.append(record)
+            # si es una subparte, el padre es un gen y el padre produce mRNA (seguramente un intrón mal anotado), pues para dentro
             elif dict_ids_record.get(record['Parent'], -1) != -1 and dict_ids_record[record['Parent']]['type'] == 'gene' and gene_mRNA_record.get(record['Parent'], -1) != -1:
                 records_genes_produce_mRNA.append(record)
-            else:
+            elif record['type'] != 'intergenic_region':
                 remove_elements.append(record['old_idx'])
 
         if check:
