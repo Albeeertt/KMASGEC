@@ -85,8 +85,10 @@ def ejecutar():
         gff = instance_cleanData.obtain_gff(ruta_data_gff, encoding='latin-1')
         fasta = instance_cleanData.obtain_dicc_fasta(ruta_data_fasta)
 
-        elements_plus_te_mRNA, remove_idx_mRNA = instance_cleanData.obtain_gene_w_mRNA(gff, ['intergenic_region'], False, False)
-        dataframe_elements_plus_te_mRNA = pd.DataFrame(elements_plus_te_mRNA)
+        # TODO: Descomentar esto brbrrpoororoorvjrov.
+        # elements_plus_te_mRNA, remove_idx_mRNA = instance_cleanData.obtain_gene_w_mRNA(gff, ['intergenic_region'], False, False)
+        # dataframe_elements_plus_te_mRNA = pd.DataFrame(elements_plus_te_mRNA)
+        dataframe_elements_plus_te_mRNA = gff
 
 
         # First Data
