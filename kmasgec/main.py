@@ -85,9 +85,8 @@ def ejecutar():
         gff = instance_cleanData.obtain_gff(ruta_data_gff, encoding='latin-1')
         fasta = instance_cleanData.obtain_dicc_fasta(ruta_data_fasta)
 
-        # TODO: Descomentar esto brbrrpoororoorvjrov.
-        # elements_plus_te_mRNA, remove_idx_mRNA = instance_cleanData.obtain_gene_w_mRNA(gff, ['intergenic_region'], False, False)
-        # dataframe_elements_plus_te_mRNA = pd.DataFrame(elements_plus_te_mRNA)
+        elements_plus_te_mRNA, remove_idx_mRNA = instance_cleanData.obtain_gene_w_mRNA(gff, ['intergenic_region'], False, False)
+        dataframe_elements_plus_te_mRNA = pd.DataFrame(elements_plus_te_mRNA)
         dataframe_elements_plus_te_mRNA = gff
 
 
@@ -253,7 +252,7 @@ def ejecutar():
     a_trues  = np.asarray(all_trues, dtype=int)
     probs_ir = np.asarray([ element[0] for element in all_softmax_official_values], dtype=np.float16)
     probs_gene = np.asarray([ element[1] for element in all_softmax_official_values], dtype=np.float16)
-    # a_remove_idx_mRNA = np.asarray(remove_idx_mRNA, dtype=np.int64)
+    a_remove_idx_mRNA = np.asarray(remove_idx_mRNA, dtype=np.int64)
     a_remove_idx_chr = np.asarray(remove_idx_chr, dtype=np.int64)
     a_remove_idx_startEnd = np.asarray(remove_idx_startEnd, dtype=np.int64)
     a_remove_contaminated = np.asarray(remove_contaminated, dtype=np.int64)
@@ -263,8 +262,8 @@ def ejecutar():
     labels = np.where(a_preds == 1, 'gen', 'región intergénica')
 
     gff.loc[a_places, 'Result'] = labels
-    # gff.loc[a_remove_idx_mRNA, 'Result'] = 'No-mRNA'
-    # gff.loc[a_remove_idx_mRNA, 'Bad'] = 'Not-considered'
+    gff.loc[a_remove_idx_mRNA, 'Result'] = 'No-mRNA'
+    gff.loc[a_remove_idx_mRNA, 'Bad'] = 'Not-considered'
 
     gff.loc[a_remove_idx_chr, 'Result'] = 'No-fasta'
     gff.loc[a_remove_idx_chr, 'Bad'] = 'Not-considered'
