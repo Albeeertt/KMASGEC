@@ -87,7 +87,6 @@ def ejecutar():
 
         elements_plus_te_mRNA, remove_idx_mRNA = instance_cleanData.obtain_gene_w_mRNA(gff, ['intergenic_region'], False, False)
         dataframe_elements_plus_te_mRNA = pd.DataFrame(elements_plus_te_mRNA)
-        dataframe_elements_plus_te_mRNA = gff
 
 
         # First Data
