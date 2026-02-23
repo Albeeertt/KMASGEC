@@ -307,7 +307,7 @@ class CleanData:
             elif record['type'] == "gene" and gene_mRNA_record.get(record['ID'], -1) != -1:
                 records_genes_produce_mRNA.append(record)
             # si es una subparte, el padre es un gen y el padre produce mRNA (seguramente un intrón mal anotado), pues para dentro
-            elif dict_ids_record.get(record['Parent'], -1) != -1 and dict_ids_record[record['Parent']]['type'] == 'gene' and gene_mRNA_record.get(record['Parent'], -1) != -1:
+            elif dict_ids_record.get(record['Parent'], -1) != -1 and dict_ids_record[record['Parent']]['type'] == 'gene' and gene_mRNA_record.get(record['Parent'], -1) != -1 and record['type'] != 'transcript':
                 records_genes_produce_mRNA.append(record)
             elif record['type'] != 'intergenic_region':
                 remove_elements.append(record['old_idx'])
@@ -344,6 +344,35 @@ class CleanData:
         
         self.dataset = clean_final_dataset
         return clean_final_dataset, list_remove
+
+    def gen_into_ri(self, dataset: DataFrame, limite: int = 1000000, length_ir: int = 15) -> DataFrame:
+
+        list_dataset = dataset.to_dict(orient='records')
+        list_dataset = sorted(list_dataset, key= lambda x: x['start'])
+        new_list_dataset = []
+        i = 0
+        contador_si = 0
+        contador_no = 0
+
+        while i < len(list_dataset)-2: # para evitar una comprobación dentro casi inutil.
+            record = list_dataset[i]
+            new_list_dataset.append(record)
+            if record['type'] != 'intergenic_region':
+                i += 1
+                continue
+            record_gene = list_dataset[i+1]
+            record_ir = list_dataset[i+2]
+            n_record = record.copy()
+            n_record['type'] = 'ir_into_gen'
+            n_record['end'] = record_ir['end']
+            if (record_gene['type'] == 'gene') and (record_ir['type'] == 'intergenic_region') and (n_record['end'] - n_record['start'] <= limite) and (record_ir['end'] - record_ir['start'] > length_ir) and (record['end'] - record['start'] > length_ir):    
+                new_list_dataset.append(n_record)
+                contador_si += 1
+            else:
+                contador_no += 1
+            i += 1
+        return pd.DataFrame(new_list_dataset), contador_si, contador_no
+    
 
 
 
@@ -422,3 +451,5 @@ class Modify_samples:
                 record = self.case_extremes(record, 'end', selected_right, length_new_extreme, label_left, label_right)
             new_list_dataset.append(record)
         return pd.DataFrame(new_list_dataset)
+    
+
