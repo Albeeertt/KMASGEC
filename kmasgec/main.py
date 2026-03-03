@@ -214,7 +214,7 @@ def ejecutar():
     else:
         model = nn.DataParallel(model)
     model.load_state_dict(state, strict=True)
-    optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
+    # optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
 
     
     dataset = Base64JSONIterableDataset(args.json, min_len_seq, max_len_seq, instance_generateDataset,kmer = kmer, proportions = proportions) if args.json else Base64JSONIterableDataset(ruta_data_first_algorithm, min_len_seq, max_len_seq, instance_generateDataset,kmer = kmer, proportions = proportions)
