@@ -81,7 +81,7 @@ class Base64JSONIterableDataset(Dataset):
         Y_arr = np.frombuffer(Y_decoded,
             dtype=sample["Y"]["dtype"]
         ).reshape(sample["Y"]["shape"]).copy()
-        Y_arr = int(Y_arr.flatten()[0])
+        # Y_arr = int(Y_arr.flatten()[0])
         if self._kmer:
             X_arr = self._instance_generateDataset.seq_to_kmer(X_arr, sample["X"]["dtype"], Y_arr)
         else:
