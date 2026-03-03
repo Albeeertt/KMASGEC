@@ -205,7 +205,7 @@ def ejecutar():
         checkpoint = torch.load(pkg_resources.resource_filename("kmasgec", "generate_models/all_generic_low_1.pt"), map_location=device) 
         state = checkpoint['model_state_dict']
     else:
-        checkpoint = torch.load(pkg_resources.resource_filename("kmasgec", "generate_models/all_generic_big_1.pt"), map_location=device) # first_obj.pt
+        checkpoint = torch.load(pkg_resources.resource_filename("kmasgec", "generate_models/multi_label.pt"), map_location=device) # first_obj.pt
         state = checkpoint['model_state_dict']
 
     if len(pre_args.gpus.split(',')) == 1:
