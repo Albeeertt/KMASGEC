@@ -279,8 +279,6 @@ def iteration_test_oneHead(
             # correct = (preds == labels).sum().item()
             probs = torch.sigmoid(outputs)
             preds = (probs > 0.5).int()
-            print(preds.size())
-            print(labels.size())
             correct = (preds == labels).all(dim=1).sum().item()
 
             total_acc   += correct
