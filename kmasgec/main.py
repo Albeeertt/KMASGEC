@@ -118,8 +118,8 @@ def ejecutar():
         for record in list_clean_records:
             seq = [vocab[nucleotide] for nucleotide in record['seq']]
             X.append(seq)
-            y.append(1 if record['type'] == "gene"
-                else 0 if record['type'] == "intergenic_region"
+            y.append(np.array([0, 1]) if record['type'] == "gene"
+                else np.array([1, 0]) if record['type'] == "intergenic_region"
                 else -1) # región intergénica / elemento transponible
             place.append(record['old_idx'])
 
