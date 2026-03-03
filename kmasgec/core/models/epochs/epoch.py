@@ -275,8 +275,11 @@ def iteration_test_oneHead(
             batch_size = labels.size(0)
 
             outputs = model(input_ids, attention_mask=attention_mask)
-            preds = outputs.argmax(dim=1)
-            correct = (preds == labels).sum().item()
+            # preds = outputs.argmax(dim=1)
+            # correct = (preds == labels).sum().item()
+            probs = torch.sigmoid(outputs)
+            preds = (probs > 0.5).int()
+            correct = (preds == labels).all(dim=1).sum().item()
 
             total_acc   += correct
             total_count += batch_size
@@ -284,7 +287,8 @@ def iteration_test_oneHead(
             all_trues.extend(labels.cpu().tolist())
             all_preds.extend(preds.cpu().tolist())
             all_places.extend(list(place))
-            all_softmax_official_values.extend(F.softmax(outputs.cpu(), dim=1).tolist())
+            # all_softmax_official_values.extend(F.softmax(outputs.cpu(), dim=1).tolist())
+            all_softmax_official_values.extend(probs.tolist())
 
             loss     = criterion(outputs, labels)
             total_val_loss     += loss.item() * batch_size
