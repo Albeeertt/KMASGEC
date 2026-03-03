@@ -136,7 +136,7 @@ def ejecutar():
 
     batch_size: int = args.batch_size
     min_len_seq: Dict[int, int] = {0: 10, 1: 10, 2: 10, 3: 10}
-    agrupacion = 6
+    agrupacion = 3
     kmer: bool = False
     instance_generateDataset  = GenerateDataset(False, agrupacion, kmer)
     vocab_size = len(instance_generateDataset.vocabularyComplete)+1
@@ -146,7 +146,7 @@ def ejecutar():
     proportions = True
 
 
-    max_len_seq = 1000000 # 100000
+    max_len_seq = 10000 # 100000
     learning_rate = 2e-4
     weight_decay= 5e-3
     #device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -166,16 +166,16 @@ def ejecutar():
             dropout=0.2
         )
     else:
-        model = TransformerClassifier_pool ( # El que generaliza sobre muchas especies y el que no tienen los mismos parámetros.
+        model = TransformerClassifier( # _pool ( # El que generaliza sobre muchas especies y el que no tienen los mismos parámetros.
             vocab_size=vocab_size,
             padding_idx=padding_value,
             embed_dim=256, 
             num_heads=8,
-            num_layers=4, 
+            num_layers=8, 
             dim_feedforward=1024, 
             num_classes=2, 
             dropout=0.2,
-            pooling = "cls_token"
+            # pooling = "cls_token"
         )
     torch.compile(model)
     model = model.to(device)
@@ -199,7 +199,7 @@ def ejecutar():
         eps=1e-6,
     )
 
-    criterion = nn.CrossEntropyLoss()
+    criterion = nn.BCEWithLogitsLoss() # nn.CrossEntropyLoss()
 
     if args.small_algorithm:
         checkpoint = torch.load(pkg_resources.resource_filename("kmasgec", "generate_models/all_generic_low_1.pt"), map_location=device) 
