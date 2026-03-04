@@ -453,3 +453,21 @@ class Modify_samples:
         return pd.DataFrame(new_list_dataset)
     
 
+    def lends_mode(self, dataset: DataFrame, zoom: int):
+
+        list_dataset: List[Dict] = dataset.to_dict(orient='records')
+        new_list_dataset: List[Dict] = []
+
+        for record in list_dataset:
+            new_list_dataset.append(record)
+
+            start_inicial = record['start']
+            i: int = 0
+            while (i*zoom)+record['start'] > record['end']:
+                record_copy = record.copy()
+                record_copy['start'] = (zoom*i)+start_inicial
+                record_copy['end'] = record_copy['start'] + zoom
+                new_list_dataset.append(record_copy)
+                i += 1
+        return pd.DataFrame(new_list_dataset)
+

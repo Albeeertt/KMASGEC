@@ -263,14 +263,12 @@ def ejecutar():
     a_remove_contaminated = np.asarray(remove_contaminated, dtype=np.int64)
 
 
-    print("len labels: ", a_preds.size)
-    print("len too: ", len(a_preds))
-    labels = np.where(a_preds == [0, 1], 'gen', 'región intergénica')
+    print("len labels: ", a_preds.shape)
+    labels = np.where(np.isin(a_preds, [0, 1]), 'gen', 'región intergénica')
 
-    print("len a_places: ", a_places.size)
+    print("len a_places: ", a_places.shape)
     print("aaa: ", len(a_places))
-    print("one more time: ", labels.size)
-    print("bbb: ", len(labels))
+    print("len labels: ", labels.shape)
     gff.loc[a_places, 'Result'] = labels
     gff.loc[a_remove_idx_mRNA, 'Result'] = 'No-mRNA'
     gff.loc[a_remove_idx_mRNA, 'Bad'] = 'Not-considered'
