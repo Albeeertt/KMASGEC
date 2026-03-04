@@ -55,6 +55,8 @@ def obtener_argumentos():
     parser.add_argument('--gpus', type=str, default="", help="GPUs a usar, e.g. '0', '0,1', '0,2,3'", required=True) # TODO: ignorar, hacer un único parser y ya.
     parser.add_argument('--json', type=str, required=False) # TODO: Borrar este parámetro
     parser.add_argument("--small_algorithm", action="store_true", help="Uso del algoritmo pequeño, menos preciso pero más rápido.")
+    parser.add_argument("--lens_mode", action="store_true", help="Divide las secuencias en trozos.")
+    parser.add_argument("--zoom_length", type=int, required=False, help="Tamaño de las subsecuencias.")
 
     # Analizar los argumentos pasados por el usuario
     return parser.parse_args()
@@ -68,6 +70,10 @@ def ejecutar():
         os.mkdir(route_out)
         
     route_out = route_out+'/' if not route_out.endswith('/') else route_out
+
+    if args.lens_mode and not args.zoom_length:
+        print("arg. zoom_length is necessary with lens_mode.")
+        return
         
     if args.add_labels:
         instance_agat = Agat("katulu")
@@ -257,11 +263,14 @@ def ejecutar():
     a_remove_contaminated = np.asarray(remove_contaminated, dtype=np.int64)
 
 
-    print("len labels: ", a_preds.size())
+    print("len labels: ", a_preds.size)
+    print("len too: ", len(a_preds))
     labels = np.where(a_preds == [0, 1], 'gen', 'región intergénica')
 
-    print("len a_places: ", a_places.size())
-    print("one more time: ", labels.size())
+    print("len a_places: ", a_places.size)
+    print("aaa: ", len(a_places))
+    print("one more time: ", labels.size)
+    print("bbb: ", len(labels))
     gff.loc[a_places, 'Result'] = labels
     gff.loc[a_remove_idx_mRNA, 'Result'] = 'No-mRNA'
     gff.loc[a_remove_idx_mRNA, 'Bad'] = 'Not-considered'
