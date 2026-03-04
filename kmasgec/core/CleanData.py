@@ -248,9 +248,9 @@ class CleanData:
                 remove_samples.append(record['old_idx'])
                 continue
             elif (record['strand'] == '+') or  (record['strand'] == '.'):
-                final_dataset.append({'seq': fasta_file[record['start']-1:record['end']], 'type': record['type'], 'old_idx': record['old_idx'], 'proportions': record['proportions'], 'COMPLETENESS': record['COMPLETENESS']})
+                final_dataset.append({'seq': fasta_file[record['start']-1:record['end']], 'type': record['type'], 'old_idx': record['old_idx']})
             elif record['strand'] == '-':
-                final_dataset.append({'seq': complement(fasta_file[record['start']-1:record['end']]), 'type': record['type'], 'old_idx': record['old_idx'], 'proportions': record['proportions'], 'COMPLETENESS': record['COMPLETENESS']})
+                final_dataset.append({'seq': complement(fasta_file[record['start']-1:record['end']]), 'type': record['type'], 'old_idx': record['old_idx']})
 
         if check:
             samples_eliminated = 0
