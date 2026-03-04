@@ -263,7 +263,7 @@ def ejecutar():
     a_remove_idx_startEnd = np.asarray(remove_idx_startEnd, dtype=np.int64)
     a_remove_contaminated = np.asarray(remove_contaminated, dtype=np.int64)
 
-    preds = (a_preds > 0.5).int()
+    preds = (a_preds > 0.5).astype(int)
     codes = preds[:, 0] * 2 + preds[:, 1]
     mapping = {
     1: 'gen',
