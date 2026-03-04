@@ -463,7 +463,7 @@ class Modify_samples:
 
             start_inicial = record['start']
             i: int = 0
-            while (i*zoom)+record['start'] > record['end']:
+            while ((i*zoom)+start_inicial)+zoom > record['end']:
                 record_copy = record.copy()
                 record_copy['start'] = (zoom*i)+start_inicial
                 record_copy['end'] = record_copy['start'] + zoom

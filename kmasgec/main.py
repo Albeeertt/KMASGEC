@@ -109,8 +109,9 @@ def ejecutar():
         #   .reset_index(drop=True)
         # )
 
-        data_first_algorithm['proportions'] = 1
-        data_first_algorithm['COMPLETENESS'] = 1
+
+        if args.lens_mode:
+            pass
 
 
         list_records, remove_idx_chr, remove_idx_startEnd = instance_cleanData.extract_sequences_counting_chr(data_first_algorithm, fasta)
@@ -262,13 +263,19 @@ def ejecutar():
     a_remove_idx_startEnd = np.asarray(remove_idx_startEnd, dtype=np.int64)
     a_remove_contaminated = np.asarray(remove_contaminated, dtype=np.int64)
 
+    preds = (a_preds > 0.5).int()
+    codes = preds[:, 0] * 2 + preds[:, 1]
+    mapping = {
+    1: 'gen',
+    2: 'región intergénica',
+    3: 'gen_into_ri',
+    0: 'ninguno'
+    }
 
-    print("len labels: ", a_preds.shape)
-    labels = np.where(np.isin(a_preds, [0, 1]), 'gen', 'región intergénica')
+    labels = np.vectorize(mapping.get)(codes)
 
-    print("len a_places: ", a_places.shape)
-    print("aaa: ", len(a_places))
-    print("len labels: ", labels.shape)
+    # labels = np.where(np.isin(a_preds, [0, 1]), 'gen', 'región intergénica')
+
     gff.loc[a_places, 'Result'] = labels
     gff.loc[a_remove_idx_mRNA, 'Result'] = 'No-mRNA'
     gff.loc[a_remove_idx_mRNA, 'Bad'] = 'Not-considered'
