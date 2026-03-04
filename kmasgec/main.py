@@ -249,7 +249,7 @@ def ejecutar():
     torch.cuda.empty_cache()
 
     gff['Result'] = 'None'
-    gff['Bad'] = 'No'
+    # gff['Bad'] = 'No'
     gff['prob_gene'] = np.nan
     gff['prob_intergenic_region'] = np.nan
 
@@ -278,23 +278,23 @@ def ejecutar():
 
     gff.loc[a_places, 'Result'] = labels
     gff.loc[a_remove_idx_mRNA, 'Result'] = 'No-mRNA'
-    gff.loc[a_remove_idx_mRNA, 'Bad'] = 'Not-considered'
+    # gff.loc[a_remove_idx_mRNA, 'Bad'] = 'Not-considered'
 
     gff.loc[a_remove_idx_chr, 'Result'] = 'No-fasta'
-    gff.loc[a_remove_idx_chr, 'Bad'] = 'Not-considered'
+    # gff.loc[a_remove_idx_chr, 'Bad'] = 'Not-considered'
 
     gff.loc[a_remove_idx_startEnd, 'Result'] = 'Start_bigger_than_end'
-    gff.loc[a_remove_idx_startEnd, 'Bad'] = 'Not-considered'
+    # gff.loc[a_remove_idx_startEnd, 'Bad'] = 'Not-considered'
 
     gff.loc[a_remove_contaminated, 'Result'] = 'Contaminated'
-    gff.loc[a_remove_contaminated, 'Bad'] = 'Not-considered'
+    # gff.loc[a_remove_contaminated, 'Bad'] = 'Not-considered'
 
     gff.loc[a_places, 'prob_gene'] = probs_gene
     gff.loc[a_places, 'prob_intergenic_region'] = probs_ir
 
-    bad_mask = a_trues != a_preds
-    bad_idx  = a_places[bad_mask] 
-    gff.loc[bad_idx, 'Bad'] = 'Yes'
+    # bad_mask = a_trues != a_preds
+    # bad_idx  = a_places[bad_mask] 
+    # gff.loc[bad_idx, 'Bad'] = 'Yes'
 
 
     gff.to_csv(route_out+'result.csv', sep=',')
