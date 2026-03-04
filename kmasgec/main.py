@@ -257,7 +257,7 @@ def ejecutar():
     a_remove_contaminated = np.asarray(remove_contaminated, dtype=np.int64)
 
 
-    print("len labels: ", labels.size())
+    print("len labels: ", a_preds.size())
     labels = np.where(a_preds == [0, 1], 'gen', 'región intergénica')
 
     print("len a_places: ", a_places.size())
