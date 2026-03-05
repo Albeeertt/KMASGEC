@@ -460,14 +460,17 @@ class Modify_samples:
 
         for record in list_dataset:
             new_list_dataset.append(record)
+            if (record['end'] - record['start'] >= 10000) and (record['type'] == 'gene' or record['type'] == 'intergenic_region' ):
+                start_inicial = record['start']
+                i: int = 0
+                while ((i*zoom)+start_inicial) < record['end']:
+                    record_copy = record.copy()
+                    record_copy['start'] = (zoom*i)+start_inicial
+                    record_copy['end'] = (record_copy['start'] + zoom) if (record_copy['start'] + zoom) <= record['end'] else record['end']
+                    new_list_dataset.append(record_copy)
+                    i += 1
 
-            start_inicial = record['start']
-            i: int = 0
-            while ((i*zoom)+start_inicial)+zoom > record['end']:
-                record_copy = record.copy()
-                record_copy['start'] = (zoom*i)+start_inicial
-                record_copy['end'] = record_copy['start'] + zoom
-                new_list_dataset.append(record_copy)
-                i += 1
-        return pd.DataFrame(new_list_dataset)
+        new_dataset = pd.DataFrame(new_list_dataset)
+        new_dataset['old_idx'] = new_dataset.index
+        return new_dataset
 

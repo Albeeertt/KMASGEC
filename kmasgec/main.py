@@ -34,7 +34,7 @@ logging.basicConfig(
 )
 
 # work close
-from kmasgec.core.CleanData import CleanData
+from kmasgec.core.CleanData import CleanData, Modify_samples
 from kmasgec.core.GenerateDataset import GenerateDataset
 from kmasgec.utils.agat import Agat
 from kmasgec.utils.json_pytorch import save_all_to_json
@@ -88,7 +88,11 @@ def ejecutar():
         ruta_data_fasta = args.fasta
 
         instance_cleanData = CleanData()
+        instance_modify_samples = Modify_samples()
         gff = instance_cleanData.obtain_gff(ruta_data_gff, encoding='latin-1')
+        # Función lupa aquí y después de ella, ejecutar una actualización de old_idx (necesario).
+        if args.lens_mode:
+            gff = instance_modify_samples.lends_mode(gff, args.zoom_length)
         fasta = instance_cleanData.obtain_dicc_fasta(ruta_data_fasta)
 
         elements_plus_te_mRNA, remove_idx_mRNA = instance_cleanData.obtain_gene_w_mRNA(gff, ['intergenic_region'], False, False)
@@ -108,10 +112,6 @@ def ejecutar():
         #   .loc[lambda df: df['end'] >= df['start']]
         #   .reset_index(drop=True)
         # )
-
-
-        if args.lens_mode:
-            pass
 
 
         list_records, remove_idx_chr, remove_idx_startEnd = instance_cleanData.extract_sequences_counting_chr(data_first_algorithm, fasta)
