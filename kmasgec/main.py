@@ -41,6 +41,8 @@ from kmasgec.utils.json_pytorch import save_all_to_json
 from kmasgec.core.models.loaders.Loader import Base64JSONIterableDataset, collate_fn_oneHead
 from kmasgec.core.models.epochs.epoch import iteration_test_oneHead
 from kmasgec.core.models.model_architecture.transformers import TransformerClassifier_pool, TransformerClassifier
+from kmasgec.utils.plots.sections.section_gen import Gen
+from kmasgec.utils.plots.sections.section_ir import IntergenicRegion
 
 def obtener_argumentos():
     parser = argparse.ArgumentParser()
@@ -50,6 +52,7 @@ def obtener_argumentos():
     parser.add_argument('--batch_size', type=int, required=True, help = "Tamaño del batch size")
     parser.add_argument('--out', type=str, required=True, help="")
     parser.add_argument('--add_labels', action='store_true', help="Add introns, intergenic regions and keep the longest isoform")
+    parser.add_argument('--html_path', type=str, required=True, help="Path of html.")
     parser.add_argument('--fine_tunning', action='store_true', help="")
     parser.add_argument('--train', action='store_true', help="Si deseas entrenar un modelo desde cero")
     parser.add_argument('--gpus', type=str, default="", help="GPUs a usar, e.g. '0', '0,1', '0,2,3'", required=True) # TODO: ignorar, hacer un único parser y ya.
@@ -106,12 +109,6 @@ def ejecutar():
         data_first_algorithm = dataframe_elements_plus_te_mRNA[dataframe_elements_plus_te_mRNA['type'].isin(['intergenic_region', 'gene'])]
 
         data_first_algorithm[['start','end']] = data_first_algorithm[['start','end']].apply(pd.to_numeric, errors='coerce')
-        # data_first_algorithm = (
-        # data_first_algorithm
-        #   .drop_duplicates(subset=['chr','type','start','end'])
-        #   .loc[lambda df: df['end'] >= df['start']]
-        #   .reset_index(drop=True)
-        # )
 
 
         list_records, remove_idx_chr, remove_idx_startEnd = instance_cleanData.extract_sequences_counting_chr(data_first_algorithm, fasta)
@@ -296,12 +293,21 @@ def ejecutar():
     # bad_idx  = a_places[bad_mask] 
     # gff.loc[bad_idx, 'Bad'] = 'Yes'
 
-
     gff.to_csv(route_out+'result.csv', sep=',')
     with open(route_out+'report.json', "a") as f:
         json.dump(report_dict, f, indent=4)
 
     os.remove(ruta_data_first_algorithm)
+
+    instance_html_gen = Gen('./prueba.html', "gen gen gen")
+    instance_html_ir = IntergenicRegion('./prueba.html', 'IR IR IR')
+
+    mask_gene = np.all(a_trues == [0, 1], axis=1)
+    mask_ir = np.all(a_trues == [1, 0], axis=1)
+
+    instance_html_gen.define_section(a_preds[mask_gene], a_trues[mask_gene])
+    instance_html_ir.define_section(a_preds[mask_ir], a_trues[mask_ir])
+
 
 
         # Second Data
