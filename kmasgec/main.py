@@ -41,8 +41,8 @@ from kmasgec.utils.json_pytorch import save_all_to_json
 from kmasgec.core.models.loaders.Loader import Base64JSONIterableDataset, collate_fn_oneHead
 from kmasgec.core.models.epochs.epoch import iteration_test_oneHead
 from kmasgec.core.models.model_architecture.transformers import TransformerClassifier_pool, TransformerClassifier
-from kmasgec.utils.plots.sections.section_gen import Gen
-from kmasgec.utils.plots.sections.section_ir import IntergenicRegion
+# from kmasgec.utils.plots.sections.section_gen import Gen
+# from kmasgec.utils.plots.sections.section_ir import IntergenicRegion
 
 def obtener_argumentos():
     parser = argparse.ArgumentParser()
@@ -299,14 +299,14 @@ def ejecutar():
 
     os.remove(ruta_data_first_algorithm)
 
-    instance_html_gen = Gen('./prueba.html', "gen gen gen")
-    instance_html_ir = IntergenicRegion('./prueba.html', 'IR IR IR')
+    # instance_html_gen = Gen('./prueba.html', "gen gen gen")
+    # instance_html_ir = IntergenicRegion('./prueba.html', 'IR IR IR')
 
-    mask_gene = np.all(a_trues == [0, 1], axis=1)
-    mask_ir = np.all(a_trues == [1, 0], axis=1)
+    # mask_gene = np.all(a_trues == [0, 1], axis=1)
+    # mask_ir = np.all(a_trues == [1, 0], axis=1)
 
-    instance_html_gen.define_section(a_preds[mask_gene], a_trues[mask_gene])
-    instance_html_ir.define_section(a_preds[mask_ir], a_trues[mask_ir])
+    # instance_html_gen.define_section(a_preds[mask_gene], a_trues[mask_gene])
+    # instance_html_ir.define_section(a_preds[mask_ir], a_trues[mask_ir])
 
 
 
