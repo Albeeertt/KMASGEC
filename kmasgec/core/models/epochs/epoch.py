@@ -288,7 +288,10 @@ def iteration_test_oneHead(
             all_preds.extend(preds.cpu().tolist())
             all_places.extend(list(place))
             # all_softmax_official_values.extend(F.softmax(outputs.cpu(), dim=1).tolist())
-            all_softmax_official_values.extend(probs.tolist())
+            # TODO: Descomentar la siguiente línea y comentar la posterior. Lo normal es transmitir el valor de 
+            # las probabilidades no la de los logits.
+            # all_softmax_official_values.extend(probs.tolist())
+            all_softmax_official_values.extend(outputs.tolist())
 
             loss     = criterion(outputs, labels)
             total_val_loss     += loss.item() * batch_size

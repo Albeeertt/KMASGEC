@@ -36,7 +36,7 @@ class Section:
                 color:{self.color};
                 font-size:1.2em;
             ">
-                ❦ ❦ ❦
+                💛
             </p>
         </section>
         """
@@ -96,7 +96,7 @@ class Section:
             color:#555;
             font-size:18px;
         ">
-            ───────── ❦ ─────────
+            ───────── 💛 ─────────
         </div>
         """
         return html
