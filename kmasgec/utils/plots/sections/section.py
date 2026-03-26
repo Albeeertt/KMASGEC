@@ -2,23 +2,45 @@ import numpy as np
 import io
 import matplotlib.pyplot as plt
 import base64
-from sklearn.metrics import f1_score, log_loss
+from sklearn.metrics import f1_score
+import torch
 
 
 
 class Section:
 
-    def __init__(self, html_path: str, title: str, color):
+    def __init__(self, html_path: str, title: str, color, limit_prob_ir: float = .1, limit_prob_gene: float = .3):
 
         self.html_path = html_path
         self.title = title
         self.color = color
+        self.loss_fn = torch.nn.BCEWithLogitsLoss()
+        self.limit_prob_ir = limit_prob_ir
+        self.limit_prob_gene = limit_prob_gene
 
-    def create_section(self):
+    def create_header(self):
+        html = """
+            <!DOCTYPE html>
+            <html lang="es">
+            <head>
+                <meta charset="UTF-8">
+                <title>Prueba</title>
+            </head>
+        """
+
+        return html
+
+    def create_section(self, x: int, y: int):
         html = f"""
         <section style="
+            position:absolute;
+            top:{y}px;
+            left:{x}px;
+            width:1400px;
+            height:260px;
             padding:50px;
             text-align:center;
+            box-sizing:border-box;
             background:#f5f5f5;
             border-radius:10px;
             margin:30px 0;
@@ -36,7 +58,7 @@ class Section:
                 color:{self.color};
                 font-size:1.2em;
             ">
-                💛
+                🫨
             </p>
         </section>
         """
@@ -45,20 +67,21 @@ class Section:
     def add_text(self, text: str, x: int, y: int, width: int, height: int):
         html = f"""
         <div style="
-            position:relative;
+            position:absolute;
             width:{width}px;
             height:{height}px;
+            left:{x}px;
+            top:{y}px;
             border:1px dashed red;
+            margin:0 auto;
         ">
             <div style="
-                position:absolute;
-                left:{x}px;
-                top:{y}px;
+                position:relative;
                 font-size:12px;
                 color:{self.color};
-                overflow:hidden;
+                background:rgba(0,0,255,0.1); /* debug */
             ">
-            {text}
+                {text}
             </div>
         </div>
         """
@@ -85,36 +108,80 @@ class Section:
             """
         return html
 
-    def end_section(self, y: int, width: int):
-        html = f"""
-        <div style="
-            position:absolute;
-            left:0px;
-            top:{y}px;
-            width:{width}px;
-            text-align:center;
-            color:#555;
-            font-size:18px;
-        ">
-            ───────── 💛 ─────────
-        </div>
-        """
-        return html
-
     def define_section(self):
         pass
 
-    def f1_metric(y_trues: np.array, y_preds: np.array):
+    def f1_metric(self, labels: np.array, logits: np.array):
         metrics = {}
-        metrics['f1_micro'] = f1_score(y_trues, y_preds, average='micro')
-        metrics['f1_macro'] = f1_score(y_trues, y_preds, average='macro')
+        probs = torch.sigmoid(torch.tensor(logits))
+        thresholds: np.array = np.array([self.limit_prob_ir, self.limit_prob_gene])
+        preds = (np.asarray(probs) >= thresholds).astype(int)
+        metrics['f1_micro'] = f1_score(labels, preds, average='micro')
+        metrics['f1_macro'] = f1_score(labels, preds, average='macro')
         return metrics
     
-    def cross_entropy(y_trues: np.array, y_preds: np.array):
+    def cross_entropy(self, labels: np.array, logits: np.array):
         metrics = {}
-        metrics['log_loss'] = log_loss(y_trues, y_preds)
+        y_trues_t: torch.tensor = torch.tensor(labels, dtype=torch.float32)
+        y_preds_t: torch.tensor = torch.tensor(logits, dtype=torch.float32)
+        metrics['log_loss'] = self.loss_fn(y_trues_t, y_preds_t)
         return metrics
     
     def save_html(self, html):
         with open(self.html_path, 'a', encoding='utf-8') as f:
             f.write(html)
+
+    def accuracy(self, logits: np.array, labels: np.array):
+        # TODO: me gustaría tener un accuracy estricto y otro más permisivo. con distintos thresholds creo que puede llegar a ser interesante.
+        # Si la entropía cruzada es baja los thresholds pueden ser más estrictos y viceversa, pero eso es como hacer trampas.
+        # Observar los thresholds poco a poco. De momento, centrarse en sacar varias cosas para que esto sea útil para sacar resultados.
+        # Mostrar accuracy con varios thresholds sí.
+
+        probs: torch.tensor = torch.sigmoid(torch.tensor(logits))
+        thresholds: np.array = np.array([self.limit_prob_ir, self.limit_prob_gene])
+        preds: np.array = (np.asarray(probs) >= thresholds).astype(int)
+
+        total: int = 0
+        correct: int = 0
+
+        for pred, label in zip(preds, labels):
+            if np.all(pred == label):
+                correct += 1
+            total += 1
+
+        return correct / total
+    
+    def permissive_accuracy(self, logits: np.array, labels: np.array):
+        # está mal. por que si alguna de las etiquetas es 0 y mi resultado tiene un 0 por ahí entonces está bien.
+
+        probs: torch.tensor = torch.sigmoid(torch.tensor(logits))
+        thresholds: np.array = np.array([self.limit_prob_ir, self.limit_prob_gene])
+        preds: np.array = (np.asarray(probs) >= thresholds).astype(int)
+
+        total: int = 0
+        correct: int = 0
+
+        for pred, label in zip(preds, labels):
+            if np.any(pred == label):
+                correct += 1
+            total += 1
+
+        return correct / total 
+
+    def recall(self, logits: np.array, labels: np.array):
+        # está mal. por que si alguna de las etiquetas es 0 y mi resultado tiene un 0 por ahí entonces está bien.
+
+        probs: torch.tensor = torch.sigmoid(torch.tensor(logits))
+        thresholds: np.array = np.array([self.limit_prob_ir, self.limit_prob_gene])
+        preds: np.array = (np.asarray(probs) >= thresholds).astype(int)
+
+        wrong: int = 0
+        correct: int = 0
+
+        for pred, label in zip(preds, labels):
+            if np.any(pred == label):
+                correct += 1
+            else:
+                wrong += 1
+
+        return correct / (correct + wrong)
