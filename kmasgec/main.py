@@ -210,7 +210,7 @@ def ejecutar():
         checkpoint = torch.load(pkg_resources.resource_filename("kmasgec", "generate_models/all_generic_low_1.pt"), map_location=device) 
         state = checkpoint['model_state_dict']
     else:
-        checkpoint = torch.load(pkg_resources.resource_filename("kmasgec", "generate_models/multi_label.pt"), map_location=device) # first_obj.pt
+        checkpoint = torch.load(pkg_resources.resource_filename("kmasgec", "generate_models/aaa.pt"), map_location=device) # first_obj.pt
         state = checkpoint['model_state_dict']
 
     if len(pre_args.gpus.split(',')) == 1:
@@ -303,9 +303,9 @@ def ejecutar():
 
     LIMIT_PROB_GENE, LIMIT_PROB_IR =.5, .5
 
-    instance_html_gen = Gen('./prueba.html', "Desglose", LIMIT_PROB_GENE, LIMIT_PROB_IR)
-    instance_html_ir = IntergenicRegion('./prueba.html', 'ir ir ir', LIMIT_PROB_GENE, LIMIT_PROB_IR)
-    instance_html_summary = Summary('./prueba.html', 'El sumario', LIMIT_PROB_GENE, LIMIT_PROB_IR)
+    instance_html_gen = Gen(args.html_path, "Desglose", LIMIT_PROB_GENE, LIMIT_PROB_IR)
+    instance_html_ir = IntergenicRegion(args.html_path, 'ir ir ir', LIMIT_PROB_GENE, LIMIT_PROB_IR)
+    instance_html_summary = Summary(args.html_path, 'El sumario', LIMIT_PROB_GENE, LIMIT_PROB_IR)
 
 
     mask_gene = np.all(a_trues == [0, 1], axis=1)
