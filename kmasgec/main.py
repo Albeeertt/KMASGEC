@@ -311,6 +311,8 @@ def ejecutar():
     mask_gene = np.all(a_trues == [0, 1], axis=1)
     mask_ir = np.all(a_trues == [1, 0], axis=1)
 
+    all_softmax_official_values: np.array = np.asarray(all_softmax_official_values, dtype=float)
+
     instance_html_summary.define_section(all_softmax_official_values, a_trues, 200, 0)
     instance_html_gen.define_section(all_softmax_official_values[mask_gene], a_trues[mask_gene], 200, 1260)
     instance_html_ir.define_section(all_softmax_official_values[mask_ir], a_trues[mask_ir], 200, 2520)
