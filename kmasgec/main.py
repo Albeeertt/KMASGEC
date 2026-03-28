@@ -40,9 +40,10 @@ from kmasgec.utils.agat import Agat
 from kmasgec.utils.json_pytorch import save_all_to_json
 from kmasgec.core.models.loaders.Loader import Base64JSONIterableDataset, collate_fn_oneHead
 from kmasgec.core.models.epochs.epoch import iteration_test_oneHead
-from kmasgec.core.models.model_architecture.transformers import TransformerClassifier_pool, TransformerClassifier
-# from kmasgec.utils.plots.sections.section_gen import Gen
-# from kmasgec.utils.plots.sections.section_ir import IntergenicRegion
+from kmasgec.core.models.model_architecture.transformers import TransformerClassifier
+from kmasgec.utils.plots.sections.section_gen import Gen
+from kmasgec.utils.plots.sections.section_ir import IntergenicRegion
+from kmasgec.utils.plots.sections.section_summary import Summary
 
 def obtener_argumentos():
     parser = argparse.ArgumentParser()
@@ -253,8 +254,9 @@ def ejecutar():
     a_places = np.asarray(all_places, dtype=np.int64)
     a_preds  = np.asarray(all_preds, dtype=int)
     a_trues  = np.asarray(all_trues, dtype=int)
-    probs_ir = np.asarray([ element[0] for element in all_softmax_official_values], dtype=np.float16)
-    probs_gene = np.asarray([ element[1] for element in all_softmax_official_values], dtype=np.float16)
+    probs = torch.sigmoid(all_softmax_official_values)
+    probs_ir = np.asarray([ element[0] for element in probs], dtype=np.float16)
+    probs_gene = np.asarray([ element[1] for element in probs], dtype=np.float16)
     a_remove_idx_mRNA = np.asarray(remove_idx_mRNA, dtype=np.int64)
     a_remove_idx_chr = np.asarray(remove_idx_chr, dtype=np.int64)
     a_remove_idx_startEnd = np.asarray(remove_idx_startEnd, dtype=np.int64)
@@ -298,6 +300,21 @@ def ejecutar():
         json.dump(report_dict, f, indent=4)
 
     os.remove(ruta_data_first_algorithm)
+
+    LIMIT_PROB_GENE, LIMIT_PROB_IR =.5, .5
+
+    instance_html_gen = Gen('./prueba.html', "Desglose", LIMIT_PROB_GENE, LIMIT_PROB_IR)
+    instance_html_ir = IntergenicRegion('./prueba.html', 'ir ir ir', LIMIT_PROB_GENE, LIMIT_PROB_IR)
+    instance_html_summary = Summary('./prueba.html', 'El sumario', LIMIT_PROB_GENE, LIMIT_PROB_IR)
+
+
+    mask_gene = np.all(a_trues == [0, 1], axis=1)
+    mask_ir = np.all(a_trues == [1, 0], axis=1)
+
+    instance_html_summary.define_section(all_softmax_official_values, a_trues, 200, 0)
+    instance_html_gen.define_section(all_softmax_official_values[mask_gene], a_trues[mask_gene], 200, 1260)
+    instance_html_ir.define_section(all_softmax_official_values[mask_ir], a_trues[mask_ir], 200, 2520)
+
 
     # instance_html_gen = Gen('./prueba.html', "gen gen gen")
     # instance_html_ir = IntergenicRegion('./prueba.html', 'IR IR IR')
