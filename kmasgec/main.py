@@ -254,7 +254,7 @@ def ejecutar():
     a_places = np.asarray(all_places, dtype=np.int64)
     a_preds  = np.asarray(all_preds, dtype=int)
     a_trues  = np.asarray(all_trues, dtype=int)
-    probs = torch.sigmoid(all_softmax_official_values)
+    probs = torch.sigmoid(torch.tensor(all_softmax_official_values))
     probs_ir = np.asarray([ element[0] for element in probs], dtype=np.float16)
     probs_gene = np.asarray([ element[1] for element in probs], dtype=np.float16)
     a_remove_idx_mRNA = np.asarray(remove_idx_mRNA, dtype=np.int64)

@@ -1,6 +1,5 @@
 import numpy as np
 import io
-import matplotlib.pyplot as plt
 import base64
 from sklearn.metrics import f1_score
 import torch
