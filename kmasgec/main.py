@@ -171,12 +171,23 @@ def ejecutar():
             dropout=0.2
         )
     else:
+        # model = TransformerClassifier( # _pool ( # El que generaliza sobre muchas especies y el que no tienen los mismos parámetros.
+        #     vocab_size=vocab_size,
+        #     padding_idx=padding_value,
+        #     embed_dim=256, 
+        #     num_heads=8,
+        #     num_layers=8, 
+        #     dim_feedforward=1024, 
+        #     num_classes=2, 
+        #     dropout=0.2,
+        #     # pooling = "cls_token"
+        # )
         model = TransformerClassifier( # _pool ( # El que generaliza sobre muchas especies y el que no tienen los mismos parámetros.
             vocab_size=vocab_size,
             padding_idx=padding_value,
-            embed_dim=256, 
+            embed_dim=512, 
             num_heads=8,
-            num_layers=8, 
+            num_layers=5, 
             dim_feedforward=1024, 
             num_classes=2, 
             dropout=0.2,
