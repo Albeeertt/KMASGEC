@@ -57,7 +57,6 @@ def obtener_argumentos():
     parser.add_argument('--fine_tunning', action='store_true', help="")
     parser.add_argument('--train', action='store_true', help="Si deseas entrenar un modelo desde cero")
     parser.add_argument('--gpus', type=str, default="", help="GPUs a usar, e.g. '0', '0,1', '0,2,3'", required=True) # TODO: ignorar, hacer un único parser y ya.
-    parser.add_argument('--json', type=str, required=False) # TODO: Borrar este parámetro
     parser.add_argument("--small_algorithm", action="store_true", help="Uso del algoritmo pequeño, menos preciso pero más rápido.")
     parser.add_argument("--lens_mode", action="store_true", help="Divide las secuencias en trozos.")
     parser.add_argument("--zoom_length", type=int, required=False, help="Tamaño de las subsecuencias.")
@@ -85,53 +84,53 @@ def ejecutar():
         new_route_gff = instance_agat.add_intergenicRegion(new_route_gff, route_out)
         args.gff = instance_agat.keep_longest_isoform(new_route_gff, route_out)
 
-    if not args.json:
-        ruta_data_first_algorithm = route_out+'first.json'
-        ruta_data_second_algorithm = route_out+'second.json'
-        ruta_data_gff = args.gff
-        ruta_data_fasta = args.fasta
+    ruta_data_first_algorithm = route_out+'first.json'
+    ruta_data_second_algorithm = route_out+'second.json'
+    ruta_data_gff = args.gff
+    ruta_data_fasta = args.fasta
 
-        instance_cleanData = CleanData()
-        instance_modify_samples = Modify_samples()
-        gff = instance_cleanData.obtain_gff(ruta_data_gff, encoding='latin-1')
-        # Función lupa aquí y después de ella, ejecutar una actualización de old_idx (necesario).
-        if args.lens_mode:
-            gff = instance_modify_samples.lends_mode(gff, args.zoom_length)
-        fasta = instance_cleanData.obtain_dicc_fasta(ruta_data_fasta)
+    instance_cleanData = CleanData()
+    instance_modify_samples = Modify_samples()
+    gff = instance_cleanData.obtain_gff(ruta_data_gff, encoding='latin-1')
+    # Función lupa aquí y después de ella, ejecutar una actualización de old_idx (necesario).
+    if args.lens_mode:
+        gff = instance_modify_samples.lends_mode(gff, args.zoom_length)
+    fasta = instance_cleanData.obtain_dicc_fasta(ruta_data_fasta)
 
-        elements_plus_te_mRNA, remove_idx_mRNA = instance_cleanData.obtain_gene_w_mRNA(gff, ['intergenic_region'], False, False)
-        dataframe_elements_plus_te_mRNA = pd.DataFrame(elements_plus_te_mRNA)
-
-
-        # First Data
-        # ---------------------------------------------------------------------------------------------
+    elements_plus_te_mRNA, remove_idx_mRNA = instance_cleanData.obtain_gene_w_mRNA(gff, ['intergenic_region'], False, False)
+    # TODO: si quieres crear el dataset de distinta manera (igual que en el entrenamiento) debes de escribir aquí el dataframe, ejecutar *agat* y volver a cargar el GFF3.
+    dataframe_elements_plus_te_mRNA = pd.DataFrame(elements_plus_te_mRNA)
 
 
-        data_first_algorithm = dataframe_elements_plus_te_mRNA[dataframe_elements_plus_te_mRNA['type'].isin(['intergenic_region', 'gene'])]
+    # First Data
+    # ---------------------------------------------------------------------------------------------
 
-        data_first_algorithm[['start','end']] = data_first_algorithm[['start','end']].apply(pd.to_numeric, errors='coerce')
+
+    data_first_algorithm = dataframe_elements_plus_te_mRNA[dataframe_elements_plus_te_mRNA['type'].isin(['intergenic_region', 'gene'])]
+
+    data_first_algorithm[['start','end']] = data_first_algorithm[['start','end']].apply(pd.to_numeric, errors='coerce')
 
 
-        list_records, remove_idx_chr, remove_idx_startEnd = instance_cleanData.extract_sequences_counting_chr(data_first_algorithm, fasta)
-        list_clean_records, remove_contaminated = instance_cleanData.remove_sample_contaminated(list_records)
+    list_records, remove_idx_chr, remove_idx_startEnd = instance_cleanData.extract_sequences_counting_chr(data_first_algorithm, fasta)
+    list_clean_records, remove_contaminated = instance_cleanData.remove_sample_contaminated(list_records)
 
-        vocab = {'A': 0, 'C': 1, 'G': 2, 'T': 3}
-        X = []
-        y = []
-        proportions = []
-        place = []
-        for record in list_clean_records:
-            seq = [vocab[nucleotide] for nucleotide in record['seq']]
-            X.append(seq)
-            y.append(np.array([0, 1]) if record['type'] == "gene"
-                else np.array([1, 0]) if record['type'] == "intergenic_region"
-                else -1) # región intergénica / elemento transponible
-            place.append(record['old_idx'])
+    vocab = {'A': 0, 'C': 1, 'G': 2, 'T': 3}
+    X = []
+    y = []
+    proportions = []
+    place = []
+    for record in list_clean_records:
+        seq = [vocab[nucleotide] for nucleotide in record['seq']]
+        X.append(seq)
+        y.append(np.array([0, 1]) if record['type'] == "gene"
+            else np.array([1, 0]) if record['type'] == "intergenic_region"
+            else -1) # región intergénica / elemento transponible
+        place.append(record['old_idx'])
 
-        X_fin = [np.asarray(i, dtype=np.float32) for i in X]
-        y_fin = [np.asarray(i, dtype=np.float32) for i in y]
-        place_fin = [np.asarray(i, dtype=np.int64) for i in place]
-        save_all_to_json(X_fin, y_fin, place_fin, filename=ruta_data_first_algorithm, names=['X', 'Y', 'Place'])
+    X_fin = [np.asarray(i, dtype=np.float32) for i in X]
+    y_fin = [np.asarray(i, dtype=np.float32) for i in y]
+    place_fin = [np.asarray(i, dtype=np.int64) for i in place]
+    save_all_to_json(X_fin, y_fin, place_fin, filename=ruta_data_first_algorithm, names=['X', 'Y', 'Place'])
 
 
     # ---------------------------------------------------------------------------------------------
@@ -218,10 +217,10 @@ def ejecutar():
     criterion = nn.BCEWithLogitsLoss() # nn.CrossEntropyLoss()
 
     if args.small_algorithm:
-        checkpoint = torch.load(pkg_resources.resource_filename("kmasgec", "generate_models/all_generic_low_1.pt"), map_location=device) 
+        checkpoint = torch.load(pkg_resources.resource_filename("kmasgec", "generate_models/all_generic_low_1.pt"), map_location=device, weights_only=False) 
         state = checkpoint['model_state_dict']
     else:
-        checkpoint = torch.load(pkg_resources.resource_filename("kmasgec", "generate_models/model_other_obj_0.pt"), map_location=device) # first_obj.pt aaa.pt
+        checkpoint = torch.load(pkg_resources.resource_filename("kmasgec", "generate_models/model_other_obj_0.pt"), map_location=device, weights_only=False) # first_obj.pt aaa.pt
         state = checkpoint['model_state_dict']
 
     if len(pre_args.gpus.split(',')) == 1:
