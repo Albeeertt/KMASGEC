@@ -191,7 +191,7 @@ def ejecutar():
             dim_feedforward=1024, 
             num_classes=2, 
             dropout=0.2,
-            # pooling = "cls_token"
+            # pooling = "cls_token" asadasd
         )
     torch.compile(model)
     model = model.to(device)
