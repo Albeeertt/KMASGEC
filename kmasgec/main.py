@@ -191,7 +191,7 @@ def ejecutar():
             dim_feedforward=1024, 
             num_classes=2, 
             dropout=0.2,
-            # pooling = "cls_token" asadasd odhpiwuehfpquh
+            # pooling = "cls_token"
         )
     torch.compile(model)
     model = model.to(device)
@@ -221,7 +221,7 @@ def ejecutar():
         checkpoint = torch.load(pkg_resources.resource_filename("kmasgec", "generate_models/all_generic_low_1.pt"), map_location=device) 
         state = checkpoint['model_state_dict']
     else:
-        checkpoint = torch.load(pkg_resources.resource_filename("kmasgec", "generate_models/aaa.pt"), map_location=device) # first_obj.pt
+        checkpoint = torch.load(pkg_resources.resource_filename("kmasgec", "generate_models/model_other_obj_0.pt"), map_location=device) # first_obj.pt aaa.pt
         state = checkpoint['model_state_dict']
 
     if len(pre_args.gpus.split(',')) == 1:

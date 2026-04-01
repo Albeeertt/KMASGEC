@@ -52,7 +52,7 @@ source KMAsgec/bin/activate
 From the terminal, navigate to the folder where this project is located (if you’re not already there) and install the package by running:
 
 ```bash
-pip install .
+pip install . --no-cache-dir
 ```
 
 ## 3. Run the program
