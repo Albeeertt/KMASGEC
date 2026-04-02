@@ -221,6 +221,10 @@ def ejecutar():
         state = checkpoint['model_state_dict']
     else:
         checkpoint = torch.load(pkg_resources.resource_filename("kmasgec", "generate_models/model_other_obj_0.pt"), map_location=device, weights_only=False) # first_obj.pt aaa.pt
+        print(type(checkpoint))
+
+        if isinstance(checkpoint, dict):
+            print(checkpoint.keys())
         state = checkpoint['model_state_dict']
 
     if len(pre_args.gpus.split(',')) == 1:
