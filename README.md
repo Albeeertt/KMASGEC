@@ -19,6 +19,8 @@ From the project root folder, run:
 git clone https://github.com/Albeeertt/KMASGEC.git
 cd KMASGEC
 python3.10 -m venv KMAsgec
+git lfs install
+git lfs pull
 ```
 
 ### 1.1 Conda environment

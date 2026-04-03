@@ -217,16 +217,10 @@ def ejecutar():
     criterion = nn.BCEWithLogitsLoss() # nn.CrossEntropyLoss()
 
     if args.small_algorithm:
-        checkpoint = torch.load(pkg_resources.resource_filename("kmasgec", "generate_models/all_generic_low_1.pt"), map_location=device, weights_only=False) 
+        checkpoint = torch.load(pkg_resources.resource_filename("kmasgec", "generate_models/all_generic_low_1.pt"), map_location=device) 
         state = checkpoint['model_state_dict']
     else:
-        checkpoint = torch.load(pkg_resources.resource_filename("kmasgec", "generate_models/model_other_obj_0.pt"), map_location=device, weights_only=False) # first_obj.pt aaa.pt
-        print("..................")
-        print(type(checkpoint))
-
-        if isinstance(checkpoint, dict):
-            print("fnqoierunfpqiwu")
-            print(checkpoint.keys())
+        checkpoint = torch.load(pkg_resources.resource_filename("kmasgec", "generate_models/model_other_obj_0.pt"), map_location=device) # first_obj.pt aaa.pt
         state = checkpoint['model_state_dict']
 
     if len(pre_args.gpus.split(',')) == 1:
@@ -238,7 +232,7 @@ def ejecutar():
     # optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
 
     
-    dataset = Base64JSONIterableDataset(args.json, min_len_seq, max_len_seq, instance_generateDataset,kmer = kmer, proportions = proportions) if args.json else Base64JSONIterableDataset(ruta_data_first_algorithm, min_len_seq, max_len_seq, instance_generateDataset,kmer = kmer, proportions = proportions)
+    dataset = Base64JSONIterableDataset(ruta_data_first_algorithm, min_len_seq, max_len_seq, instance_generateDataset, kmer = kmer, proportions = proportions)
     loader_test  = DataLoader(
         dataset,
         batch_size=batch_size,
