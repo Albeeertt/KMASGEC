@@ -32,6 +32,7 @@ class Section:
         return html
 
     def create_section(self, x: int, y: int):
+
         html = f"""
         <section style="
             position:absolute;
@@ -42,12 +43,11 @@ class Section:
             padding:50px;
             text-align:center;
             box-sizing:border-box;
-            background:#f5f5f5;
+            background:{self.color};
             border-radius:10px;
             margin:30px 0;
         ">
             <h2 style="
-                color:{self.color};
                 font-size:2.6em;
                 font-weight:bold;
                 letter-spacing:1px;
@@ -56,36 +56,56 @@ class Section:
             </h2>
 
             <p style="
-                color:{self.color};
                 font-size:1.2em;
             ">
-                🫨
             </p>
         </section>
         """
         return html
 
-    def add_text(self, text: str, x: int, y: int, width: int, height: int) -> str:
-        html = f"""
-        <div style="
+    def add_text(self, text: str, x: int, y: int, width: int, height: int, image_url: str | None = None) -> str:
+
+        container_style = f"""
             position:absolute;
             width:{width}px;
             height:{height}px;
             left:{x}px;
             top:{y}px;
-            border:1px dashed red;
             margin:0 auto;
+        """
+
+        if image_url:
+            container_style += f"""
+                background-image:url('{image_url}');
+                background-size:contain;
+                background-repeat:no-repeat;
+                background-position:center;
+            """
+
+        html = f"""
+        <div style="
+        {container_style}
         ">
             <div style="
-                position:relative;
+                position:absolute;
+                top:0px;
+                left:0px;
+                width:100%;
+                height:100%;
+                display:flex;
+                align-items:center;
+                justify-content:center;
+
                 font-size:12px;
-                color:{self.color};
-                background:rgba(0,0,255,0.1); /* debug */
+                
             ">
-                {text}
+                {text} 
             </div>
         </div>
         """
+        # border:1px dashed red;
+        # background:rgba(0,0,255,0.1); /* debug */
+
         return html
 
     def add_graph(self, fig, x:int, y:int, width: int, height: int):
@@ -117,15 +137,15 @@ class Section:
         probs = torch.sigmoid(torch.tensor(logits))
         thresholds: np.array = np.array([self.limit_prob_ir, self.limit_prob_gene])
         preds = (np.asarray(probs) >= thresholds).astype(int)
-        metrics['f1_micro'] = f1_score(labels, preds, average='micro')
-        metrics['f1_macro'] = f1_score(labels, preds, average='macro')
+        metrics['f1_micro'] = round(f1_score(labels, preds, average='micro'), 2)
+        metrics['f1_macro'] = round(f1_score(labels, preds, average='macro'), 2)
         return metrics
     
     def cross_entropy(self, logits: np.array, labels: np.array) -> float:
         y_trues_t: torch.tensor = torch.tensor(labels, dtype=torch.float32)
         y_preds_t: torch.tensor = torch.tensor(logits, dtype=torch.float32)
         value_cross_entropy: torch.tensor = self.loss_fn(y_preds_t, y_trues_t)
-        return value_cross_entropy.item()
+        return round(value_cross_entropy.item(), 2)
     
     def save_html(self, html):
         with open(self.html_path, 'a', encoding='utf-8') as f:
@@ -149,7 +169,20 @@ class Section:
                 correct += 1
             total += 1
 
-        return correct / total
+        return round(correct / total, 2)
+    
+    def accuracy_per_threshold(self, logits: np.array, column: int, theshold: float) -> float:
+
+        correct: int = 0
+        probs: torch.tensor = torch.sigmoid(torch.tensor(logits))
+
+        for prob in probs:
+            if prob[column] >= theshold:
+                correct += 1
+
+        return round(correct / len(probs), 2)
+
+        
     
     def permissive_accuracy(self, logits: np.array, labels: np.array) -> float:
 
@@ -164,7 +197,7 @@ class Section:
             if not np.array_equal(pred, np.array([0, 0])) and np.any(pred == label):
                 correct += 1
             total += 1
-        return correct / total 
+        return round(correct / total, 2)
 
     def recall_label(self, logits: np.array, column: int) -> float:
         # Los valores que llegan deben de estar filtrados por la etiqueta de la que se quiere obtener el recall.
@@ -179,7 +212,7 @@ class Section:
             if pred[column] == 1:
                 correct += 1
 
-        return correct / len(preds)
+        return round(correct / len(preds), 2)
     
     def recall_micro(self, logits: np.array, labels: np.array) -> float:
         # este recall no debe de ser filtrado, no como recall_label, la intuición de este es hacer un recall binario al uso gigante, por tanto, se aplanan los logits y labels.
@@ -193,4 +226,4 @@ class Section:
         TP = np.sum((labels == 1) & (preds == 1))
         FN = np.sum((labels == 1) & (preds == 0))
 
-        return TP / (TP + FN) if (TP + FN) > 0 else 0.0
+        return round(TP / (TP + FN), 2) if (TP + FN) > 0 else 0.0

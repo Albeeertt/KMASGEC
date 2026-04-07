@@ -53,7 +53,6 @@ def obtener_argumentos():
     parser.add_argument('--batch_size', type=int, required=True, help = "Tamaño del batch size")
     parser.add_argument('--out', type=str, required=True, help="")
     parser.add_argument('--add_labels', action='store_true', help="Add introns, intergenic regions and keep the longest isoform")
-    parser.add_argument('--html_path', type=str, required=True, help="Path of html.")
     parser.add_argument('--fine_tunning', action='store_true', help="")
     parser.add_argument('--train', action='store_true', help="Si deseas entrenar un modelo desde cero")
     parser.add_argument('--gpus', type=str, default="", help="GPUs a usar, e.g. '0', '0,1', '0,2,3'", required=True) # TODO: ignorar, hacer un único parser y ya.
@@ -66,6 +65,8 @@ def obtener_argumentos():
 
 
 def ejecutar():
+    NAME_HTML: str = 'info.html'
+
     args = obtener_argumentos()
 
     route_out = args.out
@@ -184,9 +185,9 @@ def ejecutar():
         model = TransformerClassifier( # _pool ( # El que generaliza sobre muchas especies y el que no tienen los mismos parámetros.
             vocab_size=vocab_size,
             padding_idx=padding_value,
-            embed_dim=512, 
+            embed_dim=256, 
             num_heads=8,
-            num_layers=5, 
+            num_layers=8, 
             dim_feedforward=1024, 
             num_classes=2, 
             dropout=0.2,
@@ -313,9 +314,9 @@ def ejecutar():
 
     LIMIT_PROB_GENE, LIMIT_PROB_IR =.5, .5
 
-    instance_html_gen = Gen(args.html_path, "Desglose", LIMIT_PROB_GENE, LIMIT_PROB_IR)
-    instance_html_ir = IntergenicRegion(args.html_path, 'ir ir ir', LIMIT_PROB_GENE, LIMIT_PROB_IR)
-    instance_html_summary = Summary(args.html_path, 'El sumario', LIMIT_PROB_GENE, LIMIT_PROB_IR)
+    # instance_html_gen = Gen(args.html_path, "Desglose", LIMIT_PROB_GENE, LIMIT_PROB_IR)
+    # instance_html_ir = IntergenicRegion(args.html_path, 'ir ir ir', LIMIT_PROB_GENE, LIMIT_PROB_IR)
+    instance_html_summary = Summary(route_out+NAME_HTML, 'Summary', "#DE8512", LIMIT_PROB_GENE, LIMIT_PROB_IR)
 
 
     mask_gene = np.all(a_trues == [0, 1], axis=1)
@@ -324,8 +325,8 @@ def ejecutar():
     all_softmax_official_values: np.array = np.asarray(all_softmax_official_values, dtype=float)
 
     instance_html_summary.define_section(all_softmax_official_values, a_trues, 200, 0)
-    instance_html_gen.define_section(all_softmax_official_values[mask_gene], a_trues[mask_gene], 200, 1260)
-    instance_html_ir.define_section(all_softmax_official_values[mask_ir], a_trues[mask_ir], 200, 2520)
+    # instance_html_gen.define_section(all_softmax_official_values[mask_gene], a_trues[mask_gene], 200, 1260)
+    # instance_html_ir.define_section(all_softmax_official_values[mask_ir], a_trues[mask_ir], 200, 2520)
 
 
     # instance_html_gen = Gen('./prueba.html', "gen gen gen")

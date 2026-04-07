@@ -100,12 +100,6 @@ class Base64JSONIterableDataset(Dataset):
 
         return X_tensor, Y_tensor, place
 
-    def make_stratified_splits(self, n_splits=5, seed=42):
-        y = np.array(self._k_fold)                  # etiquetas (longitud = len(self.offsets))
-        idx = np.arange(len(y))                     # índices 0..N-1 (posición en offsets)
-        skf = StratifiedKFold(n_splits=n_splits, shuffle=True, random_state=seed)
-        return list(skf.split(idx, y))              # lista de (train_idx, val_idx)
-
 
 def generate_attn_mask(query: torch.Tensor, key: torch.Tensor, padding_value: int, num_heads: int):
     
