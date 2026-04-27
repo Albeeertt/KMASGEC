@@ -459,7 +459,7 @@ class Modify_samples:
         new_list_dataset: List[Dict] = []
 
         for record in list_dataset:
-            new_list_dataset.append(record)
+            # new_list_dataset.append(record)
             if (record['end'] - record['start'] >= 10000) and (record['type'] == 'gene' or record['type'] == 'intergenic_region' ):
                 start_inicial = record['start']
                 i: int = 0

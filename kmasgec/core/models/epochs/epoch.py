@@ -274,6 +274,80 @@ def iteration_test_oneHead(
 
             batch_size = labels.size(0)
 
+            outputs, _ = model(input_ids, attention_mask=attention_mask)
+            preds = outputs.argmax(dim=1)
+            hard_labels = labels.argmax(dim=1)
+            correct = (preds == hard_labels).sum().item()
+            # probs = torch.sigmoid(outputs)
+            # preds = (probs >= 0.5).int()
+            # correct = (preds == labels).all(dim=1).sum().item()
+
+            total_acc   += correct
+            total_count += batch_size
+
+            all_trues.extend(labels.cpu().tolist())
+            all_preds.extend(preds.cpu().tolist())
+            all_places.extend(list(place))
+            # all_softmax_official_values.extend(F.softmax(outputs.cpu(), dim=1).tolist())
+            # TODO: Descomentar la siguiente línea y comentar la posterior. Lo normal es transmitir el valor de 
+            # las probabilidades no la de los logits.
+            # all_softmax_official_values.extend(probs.tolist())
+            all_softmax_official_values.extend(outputs.tolist())
+
+            loss     = criterion(outputs, labels)
+            total_val_loss     += loss.item() * batch_size
+
+            dataloader.set_postfix({
+                'loss_test': f'{total_val_loss/ total_count:.4f}',
+                'acc_test' : f'{total_acc/total_count:.4f}'
+            })
+
+        avg_val_loss     = total_val_loss     / total_count
+        epoch_acc = total_acc / total_count
+
+    print(f"Accuracy en test: {epoch_acc:.4f}")
+    print("--------------------------------------------------")
+    report_dict = classification_report(all_trues, all_preds, digits=4, output_dict=True)
+    # cm = confusion_matrix(
+    #     all_trues,
+    #     all_preds
+    # )
+    # cm_list = cm.tolist()
+    # report_dict["confusion_matrix"] = cm_list
+
+    print("Fin")
+    return report_dict, all_trues, all_preds, all_places, all_softmax_official_values
+
+
+def iteration_test_oneHead_div(
+    dataloader,      # ahora es un DataLoader, no el Dataset crudo
+    model,
+    device,
+    criterion,
+    num_classes,
+    max_len_seq: int
+):
+    model.eval()
+    total_val_loss = 0.0
+    total_acc   = 0.0
+    total_count = 0
+
+    all_trues = []
+    all_preds = []
+    all_places = []
+    all_softmax_official_values = []
+
+    criterion = criterion.to(device)
+
+    with torch.no_grad():
+        for seqs, types, mask, place in dataloader:
+            # types: [B], seqs: [B, L], mask: [B, L]
+            labels = types.to(device)
+            input_ids = seqs.to(device)
+            attention_mask = mask.to(device)
+
+            batch_size = labels.size(0)
+
             outputs = model(input_ids, attention_mask=attention_mask)
             # preds = outputs.argmax(dim=1)
             # correct = (preds == labels).sum().item()

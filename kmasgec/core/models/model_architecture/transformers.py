@@ -388,6 +388,123 @@ class TransformerClassifier_pool(nn.Module):
         logits = self.classifier(rep)  # [B, C]
         return logits
 
+class TransformerClassifier_Gtokens(nn.Module):
+    def __init__(
+        self,
+        vocab_size: int,
+        padding_idx: int,
+        embed_dim: int = 128,
+        num_heads: int = 8,
+        num_gtokens: int = 1,
+        num_layers: int = 4,
+        dim_feedforward: int = 512,
+        num_classes: int = 2,
+        dropout: float = 0.1
+    ):
+        super().__init__()
+        self.cls_token = nn.Parameter(torch.zeros(1, num_gtokens, embed_dim))
+        nn.init.normal_(self.cls_token, std=0.02)
+        self.embed_dim = embed_dim
+        # Token embeddings
+        self.token_embed = nn.Embedding(vocab_size, embed_dim, padding_idx=padding_idx)
+
+        # Positional embeddings
+        div = torch.arange(0, embed_dim, 2, dtype=torch.float32) * (-math.log(10000.0) / embed_dim)
+        self.register_buffer("pos_div_term", torch.exp(div))  # [D/2]
+
+        # self.embed_ln = nn.LayerNorm(embed_dim)
+
+        # Transformer encoder
+
+        #encoder_layer = MyEncoderLayer(
+        #    d_model=embed_dim,
+        #    nhead=num_heads,
+        #    dim_feedforward=dim_feedforward,
+        #    dropout=dropout,
+        #    batch_first=True,
+        #    activation='gelu',
+        #    norm_first=False
+        #)
+
+        encoder_layer = nn.TransformerEncoderLayer(
+            d_model=embed_dim,
+            nhead=num_heads,
+            dim_feedforward=dim_feedforward,
+            dropout=dropout,
+            batch_first=True,
+            activation='gelu',
+            norm_first=True
+        )
+
+        self.transformer = nn.TransformerEncoder(
+            encoder_layer,
+            num_layers=num_layers
+        )
+
+        self.pre_head_ln = nn.LayerNorm(num_gtokens*embed_dim)
+
+        self.classifier = nn.Sequential(
+            nn.Linear(num_gtokens*embed_dim, dim_feedforward),
+            nn.GELU(),
+            nn.Dropout(dropout),
+            nn.Linear(dim_feedforward, num_classes)
+        )
+
+    def forward(self, input_ids: torch.LongTensor, attention_mask: torch.BoolTensor = None) -> torch.Tensor:
+        """
+        Args:
+            input_ids (LongTensor): [batch_size, seq_len] token indices.
+            attention_mask (BoolTensor): [batch_size, seq_len] where True indicates tokens to attend.
+        Returns:
+            logits (Tensor): [batch_size, num_classes]
+        """
+
+        attentions = []
+        bsz, seq_len = input_ids.size()
+        # Embedding
+        token_emb = self.token_embed(input_ids)  # [B, L, D]
+        # CLS token
+        _, num_gtokens, _ = self.cls_token.size()
+        cls_tok = self.cls_token.expand(bsz, num_gtokens, -1)
+        token_emb = torch.cat([cls_tok, token_emb], dim=1)
+        cls_mask = torch.ones(bsz, num_gtokens, device=attention_mask.device, dtype=attention_mask.dtype)
+        attention_mask = torch.cat([cls_mask, attention_mask], dim=1)
+        seq_len += num_gtokens
+
+        # Positional indices
+        # positions = torch.arange(seq_len, device=input_ids.device).unsqueeze(0).expand(bsz, -1)
+        # pos_emb = self.pos_embed(positions)
+        # x = (token_emb * math.sqrt(self.embed_dim)) + pos_emb
+        num_tokens = seq_len - num_gtokens
+
+        positions = torch.arange(num_tokens, device=input_ids.device, dtype=torch.float32).unsqueeze(1)
+        pe_tokens = torch.zeros(num_tokens, token_emb.size(-1), device=input_ids.device, dtype=torch.float32)
+        pe_tokens[:, 0::2] = torch.sin(positions * self.pos_div_term)
+        pe_tokens[:, 1::2] = torch.cos(positions * self.pos_div_term)
+        pe_global = torch.zeros(num_gtokens, self.embed_dim, device=input_ids.device)
+        pe = torch.cat([pe_global, pe_tokens], dim=0)
+        x = token_emb + pe.unsqueeze(0)
+        # x = self.embed_ln(x)
+        # Transformer expects [S, B, D]
+        # x = x.transpose(0, 1)
+        # Build extended mask for CLS + tokens
+        if attention_mask is not None:
+            key_padding_mask = (~attention_mask)
+        else:
+            key_padding_mask = None
+        # Encoder
+        x = self.transformer(x, src_key_padding_mask=key_padding_mask)  # [L+1, B, D]
+
+        # Extract CLS representation
+        global_tokens_out = x[:, :num_gtokens,:]  # [B, D]
+        cls_repr = global_tokens_out.reshape(bsz, -1)  # concat
+
+        cls_repr = self.pre_head_ln(cls_repr)
+        # Classification
+        # cls_repr = self.dropout(cls_repr)
+        logits = self.classifier(cls_repr)  # [B, C]
+        return logits, attentions
+
 class TransformerClassifier(nn.Module):
     """
     Transformer-based classifier for sequence data.
@@ -452,7 +569,7 @@ class TransformerClassifier(nn.Module):
         )
 
 
-    def forward(self, input_ids: torch.LongTensor, attention_mask: torch.BoolTensor = None) -> torch.Tensor:
+    def forward(self, input_ids: torch.LongTensor, attention_mask: torch.BoolTensor = None, start_position: int = 0) -> torch.Tensor:
         """
         Args:
             input_ids (LongTensor): [batch_size, seq_len] token indices.
@@ -473,7 +590,7 @@ class TransformerClassifier(nn.Module):
         # positions = torch.arange(seq_len, device=input_ids.device).unsqueeze(0).expand(bsz, -1)
         # pos_emb = self.pos_embed(positions)
         # x = (token_emb * math.sqrt(self.embed_dim)) + pos_emb
-        positions = torch.arange(seq_len, device=input_ids.device, dtype=torch.float32).unsqueeze(1)
+        positions = torch.arange(start_position, (seq_len+start_position), device=input_ids.device, dtype=torch.float32).unsqueeze(1)
         pe = torch.zeros(seq_len, token_emb.size(-1), device=input_ids.device, dtype=torch.float32)
         pe[:, 0::2] = torch.sin(positions * self.pos_div_term)
         pe[:, 1::2] = torch.cos(positions * self.pos_div_term)

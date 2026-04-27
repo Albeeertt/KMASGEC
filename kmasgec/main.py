@@ -40,7 +40,7 @@ from kmasgec.utils.agat import Agat
 from kmasgec.utils.json_pytorch import save_all_to_json
 from kmasgec.core.models.loaders.Loader import Base64JSONIterableDataset, collate_fn_oneHead
 from kmasgec.core.models.epochs.epoch import iteration_test_oneHead
-from kmasgec.core.models.model_architecture.transformers import TransformerClassifier
+from kmasgec.core.models.model_architecture.transformers import TransformerClassifier, TransformerClassifier_Gtokens
 from kmasgec.utils.plots.sections.section_gen import Gen
 from kmasgec.utils.plots.sections.section_ir import IntergenicRegion
 from kmasgec.utils.plots.sections.section_summary import Summary
@@ -94,14 +94,21 @@ def ejecutar():
     instance_modify_samples = Modify_samples()
     gff = instance_cleanData.obtain_gff(ruta_data_gff, encoding='latin-1')
     # Función lupa aquí y después de ella, ejecutar una actualización de old_idx (necesario).
-    if args.lens_mode:
-        gff = instance_modify_samples.lends_mode(gff, args.zoom_length)
-    fasta = instance_cleanData.obtain_dicc_fasta(ruta_data_fasta)
-
     elements_plus_te_mRNA, remove_idx_mRNA = instance_cleanData.obtain_gene_w_mRNA(gff, ['intergenic_region'], False, False)
     # TODO: si quieres crear el dataset de distinta manera (igual que en el entrenamiento) debes de escribir aquí el dataframe, ejecutar *agat* y volver a cargar el GFF3.
     dataframe_elements_plus_te_mRNA = pd.DataFrame(elements_plus_te_mRNA)
-
+    if args.lens_mode:
+        gff = instance_modify_samples.lends_mode(dataframe_elements_plus_te_mRNA, args.zoom_length)
+        del gff['Parent']
+        del gff['ID']
+        del gff['old_idx']
+        with open(route_out+'intermediate.gff3', "w") as f:
+            f.write("##gff-version 3\n")
+            for _, row in gff.iterrows():
+                line = "\t".join(str(row[col]) for col in gff.columns)
+                f.write(line + "\n")
+        dataframe_elements_plus_te_mRNA = instance_cleanData.obtain_gff(route_out+'intermediate.gff3', encoding='latin-1')
+    fasta = instance_cleanData.obtain_dicc_fasta(ruta_data_fasta)
 
     # First Data
     # ---------------------------------------------------------------------------------------------
@@ -155,7 +162,19 @@ def ejecutar():
     learning_rate = 2e-4
     weight_decay= 5e-3
     #device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    device = torch.device("cuda")
+    # device = torch.device("cuda")
+    if torch.backends.mps.is_available():
+        device = torch.device("mps")
+        torch.mps.empty_cache() 
+        print("Usando GPU de Apple (MPS)")
+    elif torch.cuda.is_available():
+        device = torch.device("cuda")
+        torch.cuda.empty_cache()
+        print("Usando NVIDIA GPU (CUDA)")
+    else:
+        device = torch.device("cpu")
+        print("Usando CPU")
+
     torch.cuda.empty_cache()
     print(device)
     print("Cargando modelo...")
@@ -182,12 +201,13 @@ def ejecutar():
         #     dropout=0.2,
         #     # pooling = "cls_token"
         # )
-        model = TransformerClassifier( # _pool ( # El que generaliza sobre muchas especies y el que no tienen los mismos parámetros.
+        model = TransformerClassifier_Gtokens( # _pool ( # El que generaliza sobre muchas especies y el que no tienen los mismos parámetros.
             vocab_size=vocab_size,
             padding_idx=padding_value,
-            embed_dim=256, 
+            embed_dim=512, 
             num_heads=8,
-            num_layers=8, 
+            num_gtokens=6,
+            num_layers=7, 
             dim_feedforward=1024, 
             num_classes=2, 
             dropout=0.2,
@@ -215,13 +235,13 @@ def ejecutar():
         eps=1e-6,
     )
 
-    criterion = nn.BCEWithLogitsLoss() # nn.CrossEntropyLoss()
+    criterion = nn.CrossEntropyLoss() # nn.CrossEntropyLoss()
 
     if args.small_algorithm:
         checkpoint = torch.load(pkg_resources.resource_filename("kmasgec", "generate_models/all_generic_low_1.pt"), map_location=device) 
         state = checkpoint['model_state_dict']
     else:
-        checkpoint = torch.load(pkg_resources.resource_filename("kmasgec", "generate_models/aaa.pt"), map_location=device) # first_obj.pt aaa.pt model_other_obj_0.pt 
+        checkpoint = torch.load(pkg_resources.resource_filename("kmasgec", "generate_models/model_obj_2.pt"), map_location=device) # first_obj.pt aaa.pt model_other_obj_0.pt 
         state = checkpoint['model_state_dict']
 
     if len(pre_args.gpus.split(',')) == 1:
@@ -265,24 +285,31 @@ def ejecutar():
     a_places = np.asarray(all_places, dtype=np.int64)
     a_preds  = np.asarray(all_preds, dtype=int)
     a_trues  = np.asarray(all_trues, dtype=int)
-    probs = torch.sigmoid(torch.tensor(all_softmax_official_values))
+    probs = torch.softmax(torch.tensor(all_softmax_official_values), dim=1)
     probs_ir = np.asarray([ element[0] for element in probs], dtype=np.float16)
     probs_gene = np.asarray([ element[1] for element in probs], dtype=np.float16)
+    # probs_gene_ir = np.asarray([ element[1] for element in probs], dtype=np.float16)
     a_remove_idx_mRNA = np.asarray(remove_idx_mRNA, dtype=np.int64)
     a_remove_idx_chr = np.asarray(remove_idx_chr, dtype=np.int64)
     a_remove_idx_startEnd = np.asarray(remove_idx_startEnd, dtype=np.int64)
     a_remove_contaminated = np.asarray(remove_contaminated, dtype=np.int64)
 
-    preds = (a_preds > 0.5).astype(int)
-    codes = preds[:, 0] * 2 + preds[:, 1]
-    mapping = {
-    1: 'gen',
-    2: 'región intergénica',
-    3: 'gen_into_ri',
-    0: 'ninguno'
+    # preds = (a_preds > 0.5).astype(int)
+    # codes = preds[:, 0] * 2 + preds[:, 1]
+    # mapping = {
+    # 1: 'gen',
+    # 2: 'región intergénica',
+    # 3: 'gen_into_ri',
+    # 0: 'ninguno'
+    # }
+
+    label_map = {
+        0: "región intergénica",
+        1: "gen_ir",
+        2: "gen"
     }
 
-    labels = np.vectorize(mapping.get)(codes)
+    labels = np.vectorize(label_map.get)(a_preds)
 
     # labels = np.where(np.isin(a_preds, [0, 1]), 'gen', 'región intergénica')
 
@@ -301,6 +328,7 @@ def ejecutar():
 
     gff.loc[a_places, 'prob_gene'] = probs_gene
     gff.loc[a_places, 'prob_intergenic_region'] = probs_ir
+    # gff.loc[a_places, 'prob_gen_ri'] = probs_gene_ir
 
     # bad_mask = a_trues != a_preds
     # bad_idx  = a_places[bad_mask] 
@@ -325,6 +353,7 @@ def ejecutar():
     all_softmax_official_values: np.array = np.asarray(all_softmax_official_values, dtype=float)
 
     instance_html_summary.define_section(all_softmax_official_values, a_trues, 200, 0)
+
     # instance_html_gen.define_section(all_softmax_official_values[mask_gene], a_trues[mask_gene], 200, 1260)
     # instance_html_ir.define_section(all_softmax_official_values[mask_ir], a_trues[mask_ir], 200, 2520)
 
