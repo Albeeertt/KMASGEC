@@ -45,6 +45,7 @@ from kmasgec.core.models.model_architecture.transformers import TransformerClass
 from kmasgec.utils.plots.sections.section_gen import Gen
 from kmasgec.utils.plots.sections.section_ir import IntergenicRegion
 from kmasgec.utils.plots.sections.section_summary import Summary
+from kmasgec.utils.CreateGFF import CreateGFF
 
 def obtener_argumentos():
     parser = argparse.ArgumentParser()
@@ -198,6 +199,7 @@ def ejecutar():
     pbar_test = tqdm(loader_test, total=n_batches_test, desc="Test")
     report_dict, all_trues, all_preds, all_places, all_softmax_official_values = iteration_test_oneHead(pbar_test,  model, device, criterion, 2)
     pbar_test.close()
+    os.remove(ruta_data_first_algorithm)
 
     model.to('cpu')
     del model
@@ -207,81 +209,83 @@ def ejecutar():
         torch.cuda.synchronize()
         torch.cuda.empty_cache()
 
-    gff['Result'] = 'None'
-    gff['prob_gene'] = np.nan
-    gff['prob_intergenic_region'] = np.nan
+    instance_createGFF = CreateGFF(gff, all_preds, all_places, all_softmax_official_values)
+    instance_createGFF.create_gff(remove_idx_mRNA, remove_idx_chr, remove_idx_startEnd, remove_contaminated, route_out)
 
-    a_places = np.asarray(all_places, dtype=np.int64)
-    a_preds  = np.asarray(all_preds, dtype=int)
-    a_trues  = np.asarray(all_trues, dtype=int)
-    probs = torch.softmax(torch.tensor(all_softmax_official_values), dim=1)
-    probs_ir = np.asarray([ element[0] for element in probs], dtype=np.float16)
-    probs_gene = np.asarray([ element[1] for element in probs], dtype=np.float16)
-    # probs_gene_ir = np.asarray([ element[1] for element in probs], dtype=np.float16)
-    a_remove_idx_mRNA = np.asarray(remove_idx_mRNA, dtype=np.int64)
-    a_remove_idx_chr = np.asarray(remove_idx_chr, dtype=np.int64)
-    a_remove_idx_startEnd = np.asarray(remove_idx_startEnd, dtype=np.int64)
-    a_remove_contaminated = np.asarray(remove_contaminated, dtype=np.int64)
-
-    # preds = (a_preds > 0.5).astype(int)
-    # codes = preds[:, 0] * 2 + preds[:, 1]
-    # mapping = {
-    # 1: 'gen',
-    # 2: 'región intergénica',
-    # 3: 'gen_into_ri',
-    # 0: 'ninguno'
-    # }
-
-    label_map = {
-        0: "región intergénica",
-        1: "gen_ir",
-        2: "gen"
-    }
-
-    labels = np.vectorize(label_map.get)(a_preds)
-
-    # labels = np.where(np.isin(a_preds, [0, 1]), 'gen', 'región intergénica')
-
-    gff.loc[a_places, 'Result'] = labels
-    gff.loc[a_remove_idx_mRNA, 'Result'] = 'No-mRNA'
-    # gff.loc[a_remove_idx_mRNA, 'Bad'] = 'Not-considered'
-
-    gff.loc[a_remove_idx_chr, 'Result'] = 'No-fasta'
-    # gff.loc[a_remove_idx_chr, 'Bad'] = 'Not-considered'
-
-    gff.loc[a_remove_idx_startEnd, 'Result'] = 'Start_bigger_than_end'
-    # gff.loc[a_remove_idx_startEnd, 'Bad'] = 'Not-considered'
-
-    gff.loc[a_remove_contaminated, 'Result'] = 'Contaminated'
-    # gff.loc[a_remove_contaminated, 'Bad'] = 'Not-considered'
-
-    gff.loc[a_places, 'prob_gene'] = probs_gene
-    gff.loc[a_places, 'prob_intergenic_region'] = probs_ir
-    # gff.loc[a_places, 'prob_gen_ri'] = probs_gene_ir
-
-    # bad_mask = a_trues != a_preds
-    # bad_idx  = a_places[bad_mask] 
-    # gff.loc[bad_idx, 'Bad'] = 'Yes'
-
-    gff.to_csv(route_out+'result.csv', sep=',')
     with open(route_out+'report.json', "a") as f:
         json.dump(report_dict, f, indent=4)
 
-    os.remove(ruta_data_first_algorithm)
+    # gff['Result'] = 'None'
+    # gff['prob_gene'] = np.nan
+    # gff['prob_intergenic_region'] = np.nan
 
-    LIMIT_PROB_GENE, LIMIT_PROB_IR =.5, .5
+    # a_places = np.asarray(all_places, dtype=np.int64)
+    # a_preds  = np.asarray(all_preds, dtype=int)
+    # a_trues  = np.asarray(all_trues, dtype=int)
+    # probs = torch.softmax(torch.tensor(all_softmax_official_values), dim=1)
+    # probs_ir = np.asarray([ element[0] for element in probs], dtype=np.float16)
+    # probs_gene = np.asarray([ element[1] for element in probs], dtype=np.float16)
+    # # probs_gene_ir = np.asarray([ element[1] for element in probs], dtype=np.float16)
+    # a_remove_idx_mRNA = np.asarray(remove_idx_mRNA, dtype=np.int64)
+    # a_remove_idx_chr = np.asarray(remove_idx_chr, dtype=np.int64)
+    # a_remove_idx_startEnd = np.asarray(remove_idx_startEnd, dtype=np.int64)
+    # a_remove_contaminated = np.asarray(remove_contaminated, dtype=np.int64)
+
+    # # preds = (a_preds > 0.5).astype(int)
+    # # codes = preds[:, 0] * 2 + preds[:, 1]
+    # # mapping = {
+    # # 1: 'gen',
+    # # 2: 'región intergénica',
+    # # 3: 'gen_into_ri',
+    # # 0: 'ninguno'
+    # # }
+
+    # label_map = {
+    #     0: "región intergénica",
+    #     1: "gen_ir",
+    #     2: "gen"
+    # }
+
+    # labels = np.vectorize(label_map.get)(a_preds)
+
+    # # labels = np.where(np.isin(a_preds, [0, 1]), 'gen', 'región intergénica')
+
+    # gff.loc[a_places, 'Result'] = labels
+    # gff.loc[a_remove_idx_mRNA, 'Result'] = 'No-mRNA'
+    # # gff.loc[a_remove_idx_mRNA, 'Bad'] = 'Not-considered'
+
+    # gff.loc[a_remove_idx_chr, 'Result'] = 'No-fasta'
+    # # gff.loc[a_remove_idx_chr, 'Bad'] = 'Not-considered'
+
+    # gff.loc[a_remove_idx_startEnd, 'Result'] = 'Start_bigger_than_end'
+    # # gff.loc[a_remove_idx_startEnd, 'Bad'] = 'Not-considered'
+
+    # gff.loc[a_remove_contaminated, 'Result'] = 'Contaminated'
+    # # gff.loc[a_remove_contaminated, 'Bad'] = 'Not-considered'
+
+    # gff.loc[a_places, 'prob_gene'] = probs_gene
+    # gff.loc[a_places, 'prob_intergenic_region'] = probs_ir
+    # # gff.loc[a_places, 'prob_gen_ri'] = probs_gene_ir
+
+    # # bad_mask = a_trues != a_preds
+    # # bad_idx  = a_places[bad_mask] 
+    # # gff.loc[bad_idx, 'Bad'] = 'Yes'
+
+    # gff.to_csv(route_out+'result.csv', sep=',')
+
+    # LIMIT_PROB_GENE, LIMIT_PROB_IR =.5, .5
 
     # instance_html_gen = Gen(args.html_path, "Desglose", LIMIT_PROB_GENE, LIMIT_PROB_IR)
     # instance_html_ir = IntergenicRegion(args.html_path, 'ir ir ir', LIMIT_PROB_GENE, LIMIT_PROB_IR)
-    instance_html_summary = Summary(route_out+NAME_HTML, 'Summary', "#DE8512", LIMIT_PROB_GENE, LIMIT_PROB_IR)
+    # instance_html_summary = Summary(route_out+NAME_HTML, 'Summary', "#DE8512", LIMIT_PROB_GENE, LIMIT_PROB_IR)
 
 
-    mask_gene = np.all(a_trues == [0, 1], axis=1)
-    mask_ir = np.all(a_trues == [1, 0], axis=1)
+    # mask_gene = np.all(a_trues == [0, 1], axis=1)
+    # mask_ir = np.all(a_trues == [1, 0], axis=1)
 
-    all_softmax_official_values: np.array = np.asarray(all_softmax_official_values, dtype=float)
+    # all_softmax_official_values: np.array = np.asarray(all_softmax_official_values, dtype=float)
 
-    instance_html_summary.define_section(all_softmax_official_values, a_trues, 200, 0)
+    # instance_html_summary.define_section(all_softmax_official_values, a_trues, 200, 0)
 
     # instance_html_gen.define_section(all_softmax_official_values[mask_gene], a_trues[mask_gene], 200, 1260)
     # instance_html_ir.define_section(all_softmax_official_values[mask_ir], a_trues[mask_ir], 200, 2520)
