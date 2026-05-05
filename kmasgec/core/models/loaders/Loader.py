@@ -19,15 +19,13 @@ class Base64JSONIterableDataset(Dataset):
     Lee línea a línea tu JSON en base64 y devuelve tuplas
     (features, labels) como torch.Tensor.
     """
-    def __init__(self, filename: str, min_len_seq: Dict[int, int],  max_len_seq:int, instance_generateDataset, limit: Dict[int, int] = None, kmer: bool = False, proportions: bool = False):
+    def __init__(self, filename: str, min_len_seq: Dict[int, int],  max_len_seq:int, instance_generateDataset, limit: Dict[int, int] = None, kmer: bool = False):
         super().__init__()
         self.filename = filename
         self._min_len_seq = min_len_seq
         self._max_len_seq = max_len_seq
         self._instance_generateDataset = instance_generateDataset
         self._kmer = kmer
-        self._proportions = proportions
-        self._f = None
         self._k_fold = []
 
         self.counter = Counter()
@@ -63,9 +61,7 @@ class Base64JSONIterableDataset(Dataset):
     def __getitem__(self, idx):
         if idx >= len(self.offsets):
             raise IndexError
-        if self._f is None:
-            worker = get_worker_info()
-            self._f = open(self.filename, 'rb')
+        self._f = open(self.filename, 'rb')
 
         self._f.seek(self.offsets[idx][0])
         raw = self._f.read(self.offsets[idx][1])
@@ -118,26 +114,8 @@ def generate_key_padding_mask(key: torch.Tensor, padding_value: int):
 def collate_fn_oneHead(batch, padding_value: int):
     seqs, types, places = zip(*batch)
 
-    # types = torch.tensor(types, dtype=torch.long)
-    types = torch.stack([torch.tensor(t, dtype=torch.float32) for t in types])
+    types = torch.tensor(types, dtype=torch.long)
+    # types = torch.stack([torch.tensor(t, dtype=torch.float32) for t in types])
     seqs  = pad_sequence(seqs, batch_first=True, padding_value=padding_value)
     mask  = generate_key_padding_mask(seqs, padding_value)
     return seqs, types, mask, places
-
-def collate_fn_oneHead_clsToken_add(batch, padding_value: int, cls_value: int):
-    seqs, types = zip(*batch)
-    types = torch.tensor(types, dtype=torch.long)
-    seqs_with_cls = []
-    for seq in seqs:
-        cls_token = torch.tensor([cls_value], dtype=torch.long)
-        if seq.ndim == 0:
-            seq = seq.unsqueeze(0)  
-        seq_with_cls = torch.cat([cls_token, seq], dim=0)
-        seqs_with_cls.append(seq_with_cls)
-    seqs  = pad_sequence(seqs_with_cls, batch_first=True, padding_value=padding_value)
-    mask  = generate_key_padding_mask(seqs, padding_value)
-    return seqs, types, mask
-
-
-def convert_same_length(input_filename: str, max_len_seq: int, output_filename: str):
-    pass

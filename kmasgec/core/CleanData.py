@@ -453,14 +453,13 @@ class Modify_samples:
         return pd.DataFrame(new_list_dataset)
     
 
-    def lends_mode(self, dataset: DataFrame, zoom: int):
+    def lends_mode(self, dataset: DataFrame, limit: int, zoom: int):
 
         list_dataset: List[Dict] = dataset.to_dict(orient='records')
         new_list_dataset: List[Dict] = []
 
         for record in list_dataset:
-            # new_list_dataset.append(record)
-            if (record['end'] - record['start'] >= 10000) and (record['type'] == 'gene' or record['type'] == 'intergenic_region' ):
+            if (record['end'] - record['start'] >= limit) and (record['type'] == 'gene' or record['type'] == 'intergenic_region'):
                 start_inicial = record['start']
                 i: int = 0
                 while ((i*zoom)+start_inicial) < record['end']:
@@ -469,8 +468,22 @@ class Modify_samples:
                     record_copy['end'] = (record_copy['start'] + zoom) if (record_copy['start'] + zoom) <= record['end'] else record['end']
                     new_list_dataset.append(record_copy)
                     i += 1
+            else:
+                new_list_dataset.append(record)
 
         new_dataset = pd.DataFrame(new_list_dataset)
-        new_dataset['old_idx'] = new_dataset.index
         return new_dataset
 
+    def change_strand(self, dataset: DataFrame, type_record: str, new_strand: str = '-'):
+
+        list_dataset: List[Dict] = dataset.to_dict(orient='records')
+        new_list_dataset: List[Dict] = []
+
+        for record in list_dataset:
+            new_list_dataset.append(record)
+            if record['type'] == type_record:
+                record_copy = record.copy()
+                record_copy['strand'] = new_strand
+                new_list_dataset.append(record_copy)
+
+        return pd.DataFrame(new_list_dataset)

@@ -26,6 +26,7 @@ from tqdm import tqdm
 import pkg_resources
 import pandas as pd
 import json
+import gc
 
 logging.basicConfig(
     level=logging.INFO,
@@ -40,7 +41,7 @@ from kmasgec.utils.agat import Agat
 from kmasgec.utils.json_pytorch import save_all_to_json
 from kmasgec.core.models.loaders.Loader import Base64JSONIterableDataset, collate_fn_oneHead
 from kmasgec.core.models.epochs.epoch import iteration_test_oneHead
-from kmasgec.core.models.model_architecture.transformers import TransformerClassifier, TransformerClassifier_Gtokens
+from kmasgec.core.models.model_architecture.transformers import TransformerClassifier_attnPool
 from kmasgec.utils.plots.sections.section_gen import Gen
 from kmasgec.utils.plots.sections.section_ir import IntergenicRegion
 from kmasgec.utils.plots.sections.section_summary import Summary
@@ -56,7 +57,6 @@ def obtener_argumentos():
     parser.add_argument('--fine_tunning', action='store_true', help="")
     parser.add_argument('--train', action='store_true', help="Si deseas entrenar un modelo desde cero")
     parser.add_argument('--gpus', type=str, default="", help="GPUs a usar, e.g. '0', '0,1', '0,2,3'", required=True) # TODO: ignorar, hacer un único parser y ya.
-    parser.add_argument("--small_algorithm", action="store_true", help="Uso del algoritmo pequeño, menos preciso pero más rápido.")
     parser.add_argument("--lens_mode", action="store_true", help="Divide las secuencias en trozos.")
     parser.add_argument("--zoom_length", type=int, required=False, help="Tamaño de las subsecuencias.")
 
@@ -65,7 +65,11 @@ def obtener_argumentos():
 
 
 def ejecutar():
+    MAX_LEN_SEQ = 10000 
     NAME_HTML: str = 'info.html'
+
+    agrupacion = 3
+    kmer: bool = True
 
     args = obtener_argumentos()
 
@@ -86,28 +90,17 @@ def ejecutar():
         args.gff = instance_agat.keep_longest_isoform(new_route_gff, route_out)
 
     ruta_data_first_algorithm = route_out+'first.json'
-    ruta_data_second_algorithm = route_out+'second.json'
     ruta_data_gff = args.gff
     ruta_data_fasta = args.fasta
 
     instance_cleanData = CleanData()
     instance_modify_samples = Modify_samples()
     gff = instance_cleanData.obtain_gff(ruta_data_gff, encoding='latin-1')
-    # Función lupa aquí y después de ella, ejecutar una actualización de old_idx (necesario).
     elements_plus_te_mRNA, remove_idx_mRNA = instance_cleanData.obtain_gene_w_mRNA(gff, ['intergenic_region'], False, False)
-    # TODO: si quieres crear el dataset de distinta manera (igual que en el entrenamiento) debes de escribir aquí el dataframe, ejecutar *agat* y volver a cargar el GFF3.
     dataframe_elements_plus_te_mRNA = pd.DataFrame(elements_plus_te_mRNA)
+    dataframe_elements_plus_te_mRNA = instance_modify_samples.change_strand(dataframe_elements_plus_te_mRNA, type_record = 'intergenic_region', new_strand = '-')
     if args.lens_mode:
-        gff = instance_modify_samples.lends_mode(dataframe_elements_plus_te_mRNA, args.zoom_length)
-        del gff['Parent']
-        del gff['ID']
-        del gff['old_idx']
-        with open(route_out+'intermediate.gff3', "w") as f:
-            f.write("##gff-version 3\n")
-            for _, row in gff.iterrows():
-                line = "\t".join(str(row[col]) for col in gff.columns)
-                f.write(line + "\n")
-        dataframe_elements_plus_te_mRNA = instance_cleanData.obtain_gff(route_out+'intermediate.gff3', encoding='latin-1')
+        dataframe_elements_plus_te_mRNA = instance_modify_samples.lends_mode(dataframe_elements_plus_te_mRNA, MAX_LEN_SEQ, args.zoom_length)
     fasta = instance_cleanData.obtain_dicc_fasta(ruta_data_fasta)
 
     # First Data
@@ -117,21 +110,18 @@ def ejecutar():
     data_first_algorithm = dataframe_elements_plus_te_mRNA[dataframe_elements_plus_te_mRNA['type'].isin(['intergenic_region', 'gene'])]
 
     data_first_algorithm[['start','end']] = data_first_algorithm[['start','end']].apply(pd.to_numeric, errors='coerce')
-
-
     list_records, remove_idx_chr, remove_idx_startEnd = instance_cleanData.extract_sequences_counting_chr(data_first_algorithm, fasta)
     list_clean_records, remove_contaminated = instance_cleanData.remove_sample_contaminated(list_records)
 
     vocab = {'A': 0, 'C': 1, 'G': 2, 'T': 3}
     X = []
     y = []
-    proportions = []
     place = []
     for record in list_clean_records:
         seq = [vocab[nucleotide] for nucleotide in record['seq']]
         X.append(seq)
-        y.append(np.array([0, 1]) if record['type'] == "gene"
-            else np.array([1, 0]) if record['type'] == "intergenic_region"
+        y.append(np.array(1) if record['type'] == "gene"
+            else np.array(0) if record['type'] == "intergenic_region"
             else -1) # región intergénica / elemento transponible
         place.append(record['old_idx'])
 
@@ -140,29 +130,20 @@ def ejecutar():
     place_fin = [np.asarray(i, dtype=np.int64) for i in place]
     save_all_to_json(X_fin, y_fin, place_fin, filename=ruta_data_first_algorithm, names=['X', 'Y', 'Place'])
 
-
-    # ---------------------------------------------------------------------------------------------
-
     # Model 1
     # ---------------------------------------------------------------------------------------------
 
     batch_size: int = args.batch_size
     min_len_seq: Dict[int, int] = {0: 10, 1: 10, 2: 10, 3: 10}
-    agrupacion = 3
-    kmer: bool = False
     instance_generateDataset  = GenerateDataset(False, agrupacion, kmer)
-    vocab_size = len(instance_generateDataset.vocabularyComplete)+1
     padding_value = len(instance_generateDataset.vocabularyComplete)
+    vocab_size = len(instance_generateDataset.vocabularyComplete)+1
     print("Tamaño del vocabulario: ", len(instance_generateDataset.vocabularyComplete))
     partial_collateFN = partial(collate_fn_oneHead, padding_value=padding_value)
-    proportions = True
 
-
-    max_len_seq = 10000 # 100000
-    learning_rate = 2e-4
-    weight_decay= 5e-3
     #device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     # device = torch.device("cuda")
+    device_cuda: bool = False
     if torch.backends.mps.is_available():
         device = torch.device("mps")
         torch.mps.empty_cache() 
@@ -170,90 +151,38 @@ def ejecutar():
     elif torch.cuda.is_available():
         device = torch.device("cuda")
         torch.cuda.empty_cache()
+        device_cuda = True
         print("Usando NVIDIA GPU (CUDA)")
     else:
         device = torch.device("cpu")
         print("Usando CPU")
 
-    torch.cuda.empty_cache()
-    print(device)
     print("Cargando modelo...")
-    if args.small_algorithm:
-        model = TransformerClassifier( 
-            vocab_size=vocab_size,
-            padding_idx=padding_value,
-            embed_dim=128, 
-            num_heads=8,
-            num_layers=2, 
-            dim_feedforward=512, 
-            num_classes=2, 
-            dropout=0.2
-        )
-    else:
-        # model = TransformerClassifier( # _pool ( # El que generaliza sobre muchas especies y el que no tienen los mismos parámetros.
-        #     vocab_size=vocab_size,
-        #     padding_idx=padding_value,
-        #     embed_dim=256, 
-        #     num_heads=8,
-        #     num_layers=8, 
-        #     dim_feedforward=1024, 
-        #     num_classes=2, 
-        #     dropout=0.2,
-        #     # pooling = "cls_token"
-        # )
-        model = TransformerClassifier_Gtokens( # _pool ( # El que generaliza sobre muchas especies y el que no tienen los mismos parámetros.
-            vocab_size=vocab_size,
-            padding_idx=padding_value,
-            embed_dim=512, 
-            num_heads=8,
-            num_gtokens=6,
-            num_layers=7, 
-            dim_feedforward=1024, 
-            num_classes=2, 
-            dropout=0.2,
-            # pooling = "cls_token"
-        )
+
+    model = TransformerClassifier_attnPool(
+        vocab_size=vocab_size,
+        padding_idx=padding_value,
+        embed_dim=256, 
+        num_heads=8,
+        num_layers=8, 
+        dim_feedforward=4098, 
+        num_classes=2, 
+        dropout=0.2
+    )
     torch.compile(model)
     model = model.to(device)
 
-
-
-    decay, no_decay = [], []
-    for name, param in model.named_parameters():
-        if param.requires_grad:
-            if param.ndim == 1 or "bias" in name or "norm" in name:
-                no_decay.append(param)
-            else:
-                decay.append(param)
-
-    optimizer = torch.optim.AdamW(
-        [
-            {"params": decay, "weight_decay": weight_decay},
-            {"params": no_decay, "weight_decay": 0.0},
-        ],
-        lr=learning_rate,
-        eps=1e-6,
-    )
-
     criterion = nn.CrossEntropyLoss() # nn.CrossEntropyLoss()
 
-    if args.small_algorithm:
-        checkpoint = torch.load(pkg_resources.resource_filename("kmasgec", "generate_models/all_generic_low_1.pt"), map_location=device) 
-        state = checkpoint['model_state_dict']
-    else:
-        checkpoint = torch.load(pkg_resources.resource_filename("kmasgec", "generate_models/model_obj_2.pt"), map_location=device) # first_obj.pt aaa.pt model_other_obj_0.pt 
-        state = checkpoint['model_state_dict']
-
-    if len(pre_args.gpus.split(',')) == 1:
-        if any(k.startswith("module.") for k in state.keys()):
-            state = {k.replace("module.", "", 1): v for k, v in state.items()}
-    else:
-        model = nn.DataParallel(model)
+    checkpoint = torch.load(pkg_resources.resource_filename("kmasgec", "generate_models/cnn_transformer_1.pt"), map_location=device)
+    state = checkpoint['model_state_dict']
     model.load_state_dict(state, strict=True)
-    # optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
+
+    if len(pre_args.gpus.split(',')) > 1:
+        model = nn.DataParallel(model)
 
     
-    dataset = Base64JSONIterableDataset(ruta_data_first_algorithm, min_len_seq, max_len_seq, instance_generateDataset, kmer = kmer, proportions = proportions)
+    dataset = Base64JSONIterableDataset(ruta_data_first_algorithm, min_len_seq, MAX_LEN_SEQ, instance_generateDataset, kmer = kmer)
     loader_test  = DataLoader(
         dataset,
         batch_size=batch_size,
@@ -266,19 +195,19 @@ def ejecutar():
 
     n_batches_test = len(loader_test)
 
-
     pbar_test = tqdm(loader_test, total=n_batches_test, desc="Test")
     report_dict, all_trues, all_preds, all_places, all_softmax_official_values = iteration_test_oneHead(pbar_test,  model, device, criterion, 2)
     pbar_test.close()
 
     model.to('cpu')
     del model
-    import gc; gc.collect()
-    torch.cuda.synchronize()
-    torch.cuda.empty_cache()
+    
+    gc.collect()
+    if device_cuda:
+        torch.cuda.synchronize()
+        torch.cuda.empty_cache()
 
     gff['Result'] = 'None'
-    # gff['Bad'] = 'No'
     gff['prob_gene'] = np.nan
     gff['prob_intergenic_region'] = np.nan
 
@@ -366,153 +295,3 @@ def ejecutar():
 
     # instance_html_gen.define_section(a_preds[mask_gene], a_trues[mask_gene])
     # instance_html_ir.define_section(a_preds[mask_ir], a_trues[mask_ir])
-
-
-
-        # Second Data
-    # ---------------------------------------------------------------------------------------------
-
-
-    # data_second_algorithm = dataframe_elements_plus_te_mRNA[dataframe_elements_plus_te_mRNA['type'].isin(['intron', 'three_prime_UTR', 'five_prime_UTR', 'CDS'])]
-
-    # data_second_algorithm[['start','end']] = data_second_algorithm[['start','end']].apply(pd.to_numeric, errors='coerce')
-    # data_second_algorithm = (
-    # data_second_algorithm
-    #   .drop_duplicates(subset=['chr','type','start','end'])
-    #   .loc[lambda df: df['end'] >= df['start']]
-    #   .reset_index(drop=True)
-    # )
-
-    # data_second_algorithm['proportions'] = 1
-    # data_second_algorithm['COMPLETENESS'] = 1
-
-
-    # list_records, remove_samples_chr, remove_samples_startEnd = instance_cleanData.extract_sequences_counting_chr(data_second_algorithm, fasta)
-    # list_clean_records : List[Dict] = instance_cleanData.remove_sample_contaminated(list_records)
-
-    # vocab = {'A': 0, 'C': 1, 'G': 2, 'T': 3}
-    # X = []
-    # y = []
-    # place = []
-    # for record in list_clean_records:
-    #     seq = [vocab[nucleotide] for nucleotide in record['seq']]
-    #     X.append(seq)
-    #     y.append(1 if record['type'] == "intron"
-    #         else 0 if record['type'] == "CDS"
-    #         else 2 if record['type'] == "three_prime_UTR"
-    #         else 3 if record['type'] == "five_prime_UTR"
-    #         else -1) # región intergénica / elemento transponible
-    #     place.append(record['old_idx'])
-        
-
-    # X_fin = [np.asarray(i, dtype=np.float32) for i in X]
-    # y_fin = [np.asarray(i, dtype=np.float32) for i in y]
-    # place_fin = [np.asarray(i, dtype=np.int32) for i in place]
-    # save_all_to_json(X_fin, y_fin, place_fin, filename=ruta_data_second_algorithm, names=['X', 'Y', 'Place'])
-
-
-    # # Model 2
-    # # ---------------------------------------------------------------------------------------------
-
-    # batch_size: int = args.batch_size
-    # agrupacion = 3
-    # kmer: bool = False
-    # instance_generateDataset  = GenerateDataset(False, agrupacion, kmer)
-    # vocab_size = len(instance_generateDataset.vocabularyComplete)+1
-    # padding_value = len(instance_generateDataset.vocabularyComplete)
-    # print("Tamaño del vocabulario: ", len(instance_generateDataset.vocabularyComplete))
-    # partial_collateFN = partial(collate_fn_oneHead, padding_value=padding_value)
-    # min_len_seq: Dict[int, int] = {0: 50, 1: 50}
-
-
-    # max_len_seq = 50000
-    # learning_rate = 2e-4
-    # weight_decay= 5e-3
-    # #device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    # device = torch.device("cuda")
-    # torch.cuda.empty_cache()
-    # print(device)
-    # print("Cargando modelo...")
-    # model =  TransformerClassifier_pool (
-    #     vocab_size=vocab_size,
-    #     padding_idx=padding_value,
-    #     embed_dim=256, # 256
-    #     num_heads=8,
-    #     num_layers=4, # 4
-    #     dim_feedforward=1024, # 3072
-    #     num_classes=3, # Multi class problem (gene, intergenic_region) 
-    #     # max_seq_len=1001,
-    #     dropout=0.2,
-    #     pooling = "cls_token"
-    # )
-    # model = model.to(device)
-
-
-    # decay, no_decay = [], []
-    # for name, param in model.named_parameters():
-    #     if param.requires_grad:
-    #         if param.ndim == 1 or "bias" in name or "norm" in name:
-    #             no_decay.append(param)
-    #         else:
-    #             decay.append(param)
-
-    # optimizer = torch.optim.AdamW(
-    #     [
-    #         {"params": decay, "weight_decay": weight_decay},
-    #         {"params": no_decay, "weight_decay": 0.0},
-    #     ],
-    #     lr=learning_rate,
-    #     eps=1e-6,
-    # )
-
-    # if torch.cuda.device_count() > 1:
-    #     model = nn.DataParallel(model)
-    # criterion = nn.CrossEntropyLoss()
-
-    # checkpoint = torch.load(pkg_resources.resource_filename("kmasgec", "generate_models/second_obj.pt"), map_location=device) 
-    # model.load_state_dict(checkpoint['model_state_dict'])
-    # optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
-
-
-    # dataset = Base64JSONIterableDataset(ruta_data_second_algorithm, min_len_seq, max_len_seq, instance_generateDataset,kmer = kmer, proportions = proportions)
-
-    # loader_test  = DataLoader(
-    #     dataset,
-    #     batch_size=batch_size,
-    #     shuffle=False,
-    #     num_workers=1,
-    #     prefetch_factor=1,
-    #     persistent_workers=True,
-    #     collate_fn=partial_collateFN
-    # )
-
-    # n_batches_test = len(loader_test)
-
-
-    # pbar_test = tqdm(loader_test, total=n_batches_test, desc="Test")
-    # cm, all_trues, all_preds, all_places = iteration_test_oneHead(pbar_test,  model, device, criterion, 3)
-    # pbar_test.close()
-
-
-    # model.to('cpu')
-    # del model
-    # import gc; gc.collect()
-    # torch.cuda.synchronize()
-    # torch.cuda.empty_cache()
-
-    # print("Next")
-    # gff['Result'] = 'None'
-    # gff['Bad'] = 'No'
-    # print("completando")
-
-    # a_places = np.asarray(all_places)
-    # a_preds  = np.asarray(all_preds, dtype=int)
-    # a_trues  = np.asarray(all_trues, dtype=int)
-
-    # labels = np.where(a_preds == 1, 'gen', 'región intergénica')
-
-    # gff.loc[a_places, 'Result'] = labels
-    # bad_mask = a_trues != a_preds
-    # bad_idx  = a_places[bad_mask] 
-    # gff.loc[bad_idx, 'Bad'] = 'Yes'
-

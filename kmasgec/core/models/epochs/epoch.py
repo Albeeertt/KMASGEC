@@ -307,7 +307,8 @@ def iteration_test_oneHead(
 
     print(f"Accuracy en test: {epoch_acc:.4f}")
     print("--------------------------------------------------")
-    report_dict = classification_report(all_trues, all_preds, digits=4, output_dict=True)
+    # report_dict = classification_report(all_trues, all_preds, digits=4, output_dict=True)
+    report_dict = []
     # cm = confusion_matrix(
     #     all_trues,
     #     all_preds
