@@ -276,11 +276,7 @@ def iteration_test_oneHead(
 
             outputs, _ = model(input_ids, attention_mask=attention_mask)
             preds = outputs.argmax(dim=1)
-            hard_labels = labels.argmax(dim=1)
-            correct = (preds == hard_labels).sum().item()
-            # probs = torch.sigmoid(outputs)
-            # preds = (probs >= 0.5).int()
-            # correct = (preds == labels).all(dim=1).sum().item()
+            correct = (preds == labels).sum().item()
 
             total_acc   += correct
             total_count += batch_size

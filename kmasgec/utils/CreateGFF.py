@@ -50,7 +50,7 @@ class CreateGFF:
             list_preds = clusters_preds[key]
             places.append(key)
             if len(list_preds) > 1:
-                list_idx_gene = np.where(list_preds == 1)
+                list_idx_gene = np.where(list_preds == 1)[0]
                 if list_idx_gene:
                     idx_key_gene = list_idx_gene[0]
                     preds.append(clusters_preds[key][idx_key_gene])
