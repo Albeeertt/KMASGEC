@@ -175,7 +175,7 @@ def ejecutar():
 
     criterion = nn.CrossEntropyLoss() # nn.CrossEntropyLoss()
 
-    checkpoint = torch.load(pkg_resources.resource_filename("kmasgec", "generate_models/cnn_transformer_1.pt"), map_location=device)
+    checkpoint = torch.load(pkg_resources.resource_filename("kmasgec", "generate_models/cnn_simple_yesAttnMask_transformer_1.pt"), map_location=device)
     state = checkpoint['model_state_dict']
     model.load_state_dict(state, strict=True)
 

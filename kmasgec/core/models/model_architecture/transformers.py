@@ -602,6 +602,15 @@ class AttentionPooling(nn.Module):
         context_vector = torch.sum(x*weights, dim=1) # [B, L, D] * [B, L, 1] = [B, D]
         return context_vector, weights
 
+def downsampling_attnMask(attn_mask: torch.tensor, stride: int = 2, kernel_size: int = 9, padding: int = 4, num_layers: int = 3):
+
+    mask = attn_mask.unsqueeze(1).float()
+
+    for _ in range(num_layers):
+        mask = F.max_pool1d(mask, kernel_size=kernel_size, stride=stride, padding = padding)
+
+    return mask.squeeze(1).bool()
+
 class TransformerClassifier_attnPool(nn.Module):
 
     def __init__(self, vocab_size: int, padding_idx: int, embed_dim: int = 128, num_heads: int = 8, num_layers: int = 4, dim_feedforward: int = 1024, num_classes: int = 2, dropout: float = .2):
@@ -632,14 +641,18 @@ class TransformerClassifier_attnPool(nn.Module):
         )
 
     def forward(self, inputs_ids: torch.Tensor, attention_mask=None):
-
+        bsz = inputs_ids.size(0)
         x = self.token_embed(inputs_ids)
         # True = valores que vamos a ignorar
         # False = valores que sin distintos de padding_idx
         # Capito
+
         padding_mask = None
         if attention_mask is not None:
-            padding_mask = ~(attention_mask)
+            attention_mask = downsampling_attnMask(attention_mask, stride=2, kernel_size=9, padding=4, num_layers=3)
+            cls_mask = torch.ones(bsz, 1, device=attention_mask.device, dtype=attention_mask.dtype)
+            attention_mask = torch.cat([cls_mask, attention_mask], dim=1)
+            padding_mask = attention_mask
 
         x = self.convs(x.transpose(1, 2)).transpose(1, 2)
         b, n, _ = x.shape
@@ -647,7 +660,7 @@ class TransformerClassifier_attnPool(nn.Module):
         x = torch.cat((cls_token, x), dim=1)
 
         for layer in self.layers:
-            x = layer(x, mask=None)
+            x = layer(x, mask=padding_mask)
 
         # cls_repr, weights = self.pooling(x, mask=padding_mask)
         cls_repr = x[:, 0, :]
