@@ -138,8 +138,10 @@ def ejecutar():
     vocab = {'A': 0, 'C': 1, 'G': 2, 'T': 3}
     for sample in data_first_algorithm.to_dict(orient='records'):
         new_record, add_idx_chr, add_idx_startEnd = instance_cleanData.extract_sample_counting_chr(sample, fasta)
-        remove_idx_chr.extend(add_idx_chr)
-        remove_idx_startEnd.extend(add_idx_startEnd)
+        if new_record is None:
+            remove_idx_chr.extend(add_idx_chr)
+            remove_idx_startEnd.extend(add_idx_startEnd)
+            continue
         if instance_cleanData.is_contaminated(new_record):
             remove_contaminated.append(new_record['old_idx'])
             continue
