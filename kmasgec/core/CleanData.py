@@ -262,6 +262,37 @@ class CleanData:
         
         self.dataset = final_dataset
         return final_dataset, problemas_chr, remove_samples
+    
+    def extract_sample_counting_chr(self, record: Dict, fasta: Dict[str, str]) -> List[Dict]:
+        '''Extrae las secuencias del archivo fasta mediante el archivo GFF3 (donde están todos los cromosomas).
+        Sigue la misma lógica que Bedtools. Añadir un nucleótido de más al final.
+        Elementos con estructura {'seq': ... , 'type': ..., 'old_idx': ...}'''
+        def complement(seq : str):
+            complement = {
+            'A': 'T',
+            'T': 'A',
+            'C': 'G',
+            'G': 'C'
+            }
+            complementaria : str = ''.join([complement.get(nucleotide, 'N') for nucleotide in seq]) # complementaria
+            return complementaria[::-1] # invertida
+
+        problemas_chr = []
+        new_record : Dict = None
+        remove_samples = []
+
+        fasta_a_usar : str = str(record['chr'])
+        if fasta_a_usar not in list(fasta.keys()):
+            problemas_chr.append(record['old_idx'])
+        fasta_file : str = fasta[fasta_a_usar]
+        if record['start'] > record['end']:
+            remove_samples.append(record['old_idx'])
+        elif (record['strand'] == '+') or  (record['strand'] == '.'):
+            new_record = {'seq': fasta_file[record['start']-1:record['end']], 'type': record['type'], 'old_idx': record['old_idx']}
+        elif record['strand'] == '-':
+            new_record = {'seq': complement(fasta_file[record['start']-1:record['end']]), 'type': record['type'], 'old_idx': record['old_idx']}
+        
+        return new_record, problemas_chr, remove_samples
 
     def obtain_gene_w_mRNA(self, dataset: DataFrame, keep_classes: List[str], attr_split: bool = False, check: bool = False):
         '''
@@ -344,6 +375,15 @@ class CleanData:
         
         self.dataset = clean_final_dataset
         return clean_final_dataset, list_remove
+    
+    def is_contaminated(self, record: Dict) -> List[Dict]:
+        '''Elimina las muestras contaminadas, es decir, la que no contienen el nucleótido A, C, T o G.'''
+
+        contaminada: bool = not set(record['seq']).issubset({'A','T','C','G'})
+        if not contaminada and record['seq'] != "":
+            return False
+        else:
+            return True
 
     def gen_into_ri(self, dataset: DataFrame, limite: int = 1000000, length_ir: int = 15) -> DataFrame:
 

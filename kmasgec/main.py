@@ -108,28 +108,57 @@ def ejecutar():
     # ---------------------------------------------------------------------------------------------
 
 
-    data_first_algorithm = dataframe_elements_plus_te_mRNA[dataframe_elements_plus_te_mRNA['type'].isin(['intergenic_region', 'gene'])]
+    data_first_algorithm = dataframe_elements_plus_te_mRNA[dataframe_elements_plus_te_mRNA['type'].isin(['intergenic_region', 'gene'])].copy()
 
     data_first_algorithm[['start','end']] = data_first_algorithm[['start','end']].apply(pd.to_numeric, errors='coerce')
-    list_records, remove_idx_chr, remove_idx_startEnd = instance_cleanData.extract_sequences_counting_chr(data_first_algorithm, fasta)
-    list_clean_records, remove_contaminated = instance_cleanData.remove_sample_contaminated(list_records)
+    
+    # list_records, remove_idx_chr, remove_idx_startEnd = instance_cleanData.extract_sequences_counting_chr(data_first_algorithm, fasta)
+    # list_clean_records, remove_contaminated = instance_cleanData.remove_sample_contaminated(list_records)
 
+    # vocab = {'A': 0, 'C': 1, 'G': 2, 'T': 3}
+    # X = []
+    # y = []
+    # place = []
+    # for record in list_clean_records:
+    #     seq = [vocab[nucleotide] for nucleotide in record['seq']]
+    #     X.append(seq)
+    #     y.append(np.array(1) if record['type'] == "gene"
+    #         else np.array(0) if record['type'] == "intergenic_region"
+    #         else -1) # región intergénica / elemento transponible
+    #     place.append(record['old_idx'])
+
+    # X_fin = [np.asarray(i, dtype=np.float32) for i in X]
+    # y_fin = [np.asarray(i, dtype=np.float32) for i in y]
+    # place_fin = [np.asarray(i, dtype=np.int64) for i in place]
+    # save_all_to_json(X_fin, y_fin, place_fin, filename=ruta_data_first_algorithm, names=['X', 'Y', 'Place'])
+
+    remove_idx_chr = []
+    remove_idx_startEnd = []
+    remove_contaminated = []
     vocab = {'A': 0, 'C': 1, 'G': 2, 'T': 3}
-    X = []
-    y = []
-    place = []
-    for record in list_clean_records:
-        seq = [vocab[nucleotide] for nucleotide in record['seq']]
+    for sample in data_first_algorithm.to_dict(orient='records'):
+        new_record, add_idx_chr, add_idx_startEnd = instance_cleanData.extract_sample_counting_chr(sample, fasta)
+        remove_idx_chr.extend(add_idx_chr)
+        remove_idx_startEnd.extend(add_idx_startEnd)
+        if instance_cleanData.is_contaminated(new_record):
+            remove_contaminated.append(new_record['old_idx'])
+            continue
+        X = []
+        y = []
+        place = []
+        seq = [vocab[nucleotide] for nucleotide in new_record['seq']]
         X.append(seq)
-        y.append(np.array(1) if record['type'] == "gene"
-            else np.array(0) if record['type'] == "intergenic_region"
+        y.append(np.array(1) if new_record['type'] == "gene"
+            else np.array(0) if new_record['type'] == "intergenic_region"
             else -1) # región intergénica / elemento transponible
-        place.append(record['old_idx'])
+        place.append(new_record['old_idx'])
 
-    X_fin = [np.asarray(i, dtype=np.float32) for i in X]
-    y_fin = [np.asarray(i, dtype=np.float32) for i in y]
-    place_fin = [np.asarray(i, dtype=np.int64) for i in place]
-    save_all_to_json(X_fin, y_fin, place_fin, filename=ruta_data_first_algorithm, names=['X', 'Y', 'Place'])
+        X_fin = [np.asarray(i, dtype=np.float32) for i in X]
+        y_fin = [np.asarray(i, dtype=np.float32) for i in y]
+        place_fin = [np.asarray(i, dtype=np.int64) for i in place]
+
+        save_all_to_json(X_fin, y_fin, place_fin, filename=ruta_data_first_algorithm, names=['X', 'Y', 'Place'])
+
 
     # Model 1
     # ---------------------------------------------------------------------------------------------
@@ -163,10 +192,10 @@ def ejecutar():
     model = TransformerClassifier_attnPool(
         vocab_size=vocab_size,
         padding_idx=padding_value,
-        embed_dim=256, 
+        embed_dim=512, 
         num_heads=8,
         num_layers=8, 
-        dim_feedforward=4098, 
+        dim_feedforward=4096, 
         num_classes=2, 
         dropout=0.2
     )
@@ -175,7 +204,7 @@ def ejecutar():
 
     criterion = nn.CrossEntropyLoss() # nn.CrossEntropyLoss()
 
-    checkpoint = torch.load(pkg_resources.resource_filename("kmasgec", "generate_models/cnn_simple_yesAttnMask_transformer_1.pt"), map_location=device)
+    checkpoint = torch.load(pkg_resources.resource_filename("kmasgec", "generate_models/cnn_simple_yesAttnMask_transformer_2.pt"), map_location=device)
     state = checkpoint['model_state_dict']
     model.load_state_dict(state, strict=True)
 
