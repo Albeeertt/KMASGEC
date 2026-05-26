@@ -196,8 +196,8 @@ def ejecutar():
         padding_idx=padding_value,
         embed_dim=512, 
         num_heads=8,
-        num_layers=8, 
-        dim_feedforward=4096, 
+        num_layers=10, # 8 
+        dim_feedforward=6092, # 4096
         num_classes=2, 
         dropout=0.2
     )
@@ -206,7 +206,7 @@ def ejecutar():
 
     criterion = nn.CrossEntropyLoss() # nn.CrossEntropyLoss()
 
-    checkpoint = torch.load(pkg_resources.resource_filename("kmasgec", "generate_models/cnn_simple_yesAttnMask_transformer_2.pt"), map_location=device)
+    checkpoint = torch.load(pkg_resources.resource_filename("kmasgec", "generate_models/cnn_simple_moreSpecies_sandwitchDistinto_3_cesga.pt"), map_location=device)
     state = checkpoint['model_state_dict']
     model.load_state_dict(state, strict=True)
 
