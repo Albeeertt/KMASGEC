@@ -619,11 +619,11 @@ class TransformerClassifier_attnPool(nn.Module):
         self.cls_token = nn.Parameter(torch.zeros(1, 1, embed_dim))
         self.token_embed = nn.Embedding(vocab_size, embed_dim, padding_idx=padding_idx)
         self.convs = nn.Sequential(
-                    nn.Conv1d(embed_dim, embed_dim,kernel_size = 9, stride= 2, padding = 4, dilation = 1, bias=False),
+                    nn.Conv1d(embed_dim, embed_dim,kernel_size = 9, stride= 2, padding = 4, dilation = 1),
                     nn.GELU(),
-                    nn.Conv1d(embed_dim, embed_dim,kernel_size = 9, stride= 2, padding = 4, dilation = 1, bias=False),
+                    nn.Conv1d(embed_dim, embed_dim,kernel_size = 9, stride= 2, padding = 4, dilation = 1),
                     nn.GELU(),
-                    nn.Conv1d(embed_dim, embed_dim,kernel_size = 9, stride= 2, padding = 4, dilation = 1, bias=False),
+                    nn.Conv1d(embed_dim, embed_dim,kernel_size = 9, stride= 2, padding = 4, dilation = 1),
                     nn.GELU(),
         )
         self.layers = nn.ModuleList([
