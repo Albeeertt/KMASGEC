@@ -53,17 +53,18 @@ class CreateGFF:
 
         for key in clusters_preds.keys():
             list_preds = clusters_preds[key]
+            list_preds = np.array(list_preds)
             places.append(key)
             if len(list_preds) > 1:
                 list_idx_gene = np.where(list_preds == 1)[0]
                 list_idx_te = np.where(list_preds == 2)[0]
-                if list_idx_gene:
+                if len(list_idx_gene) > 0:
                     idx_key_gene = list_idx_gene[0]
                     preds.append(clusters_preds[key][idx_key_gene])
                     new_prob_ir.append(clusters_p_ir[key][idx_key_gene])
                     new_prob_gene.append(clusters_p_gene[key][idx_key_gene])
                     new_prob_te.append(clusters_p_te[key][idx_key_gene])
-                elif list_idx_te:
+                elif len(list_idx_te) > 0:
                     idx_key_te = list_idx_te[0]
                     preds.append(clusters_preds[key][idx_key_te])
                     new_prob_ir.append(clusters_p_ir[key][idx_key_te])
@@ -77,7 +78,6 @@ class CreateGFF:
             else:
                 preds.append(clusters_preds[key][0])
                 new_prob_ir.append(clusters_p_ir[key][0])
-                new_prob_gene.append(clusters_p_gene[key][0])
                 new_prob_gene.append(clusters_p_gene[key][0])
                 new_prob_te.append(clusters_p_te[key][0])
 
