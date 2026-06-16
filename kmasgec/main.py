@@ -98,7 +98,7 @@ def ejecutar():
     instance_cleanData = CleanData()
     instance_modify_samples = Modify_samples()
     gff = instance_cleanData.obtain_gff(ruta_data_gff, encoding='latin-1')
-    elements_plus_te_mRNA, remove_idx_mRNA = instance_cleanData.obtain_gene_w_mRNA(gff, ['intergenic_region', 'te'], False, False) # TODO: borrar te
+    elements_plus_te_mRNA, remove_idx_mRNA = instance_cleanData.obtain_gene_w_mRNA(gff, ['intergenic_region'], False, False) # TODO: borrar te
     dataframe_elements_plus_te_mRNA = pd.DataFrame(elements_plus_te_mRNA)
     dataframe_elements_plus_te_mRNA = instance_modify_samples.change_strand(dataframe_elements_plus_te_mRNA, type_record = 'intergenic_region', new_strand = '-')
     if args.lens_mode:
@@ -109,7 +109,7 @@ def ejecutar():
     # ---------------------------------------------------------------------------------------------
 
 
-    data_first_algorithm = dataframe_elements_plus_te_mRNA[dataframe_elements_plus_te_mRNA['type'].isin(['intergenic_region', 'gene', 'te'])].copy() # TODO: borrar te
+    data_first_algorithm = dataframe_elements_plus_te_mRNA[dataframe_elements_plus_te_mRNA['type'].isin(['intergenic_region', 'gene'])].copy() # TODO: borrar te
 
     data_first_algorithm[['start','end']] = data_first_algorithm[['start','end']].apply(pd.to_numeric, errors='coerce')
     
@@ -153,7 +153,7 @@ def ejecutar():
         X.append(seq)
         y.append(np.array(1) if new_record['type'] == "gene"
             else np.array(0) if new_record['type'] == "intergenic_region"
-            else np.array(2) if new_record['type'] == 'te' # TODO: borrar te
+            # else np.array(2) if new_record['type'] == 'te' # TODO: borrar te
             else -1) # región intergénica / elemento transponible
         place.append(new_record['old_idx'])
 
@@ -200,7 +200,7 @@ def ejecutar():
         num_heads=8,
         num_layers=10, # 8 
         dim_feedforward=6092, # 4096
-        num_classes=3, # TODO: borrar te
+        num_classes=2, # TODO: borrar te
         dropout=0.2
     )
     torch.compile(model)
