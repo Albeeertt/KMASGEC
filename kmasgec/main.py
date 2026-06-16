@@ -61,19 +61,25 @@ def obtener_argumentos():
     parser.add_argument('--gpus', type=str, default="", help="GPUs a usar, e.g. '0', '0,1', '0,2,3'", required=True) # TODO: ignorar, hacer un único parser y ya.
     parser.add_argument("--lens_mode", action="store_true", help="Divide las secuencias en trozos.")
     parser.add_argument("--zoom_length", type=int, required=False, help="Tamaño de las subsecuencias.")
+    parser.add_argument("--max_len_seq", type=int, required=False, help="tamaño máximo de la secuencia.")
 
     # Analizar los argumentos pasados por el usuario
     return parser.parse_args()
 
 
 def ejecutar():
-    MAX_LEN_SEQ = 10000 
     NAME_HTML: str = 'info.html'
 
     agrupacion = 3
     kmer: bool = True
 
     args = obtener_argumentos()
+
+    if args.max_len_seq:
+        MAX_LEN_SEQ = args.max_len_seq
+    else:
+        MAX_LEN_SEQ = 10000 
+
 
     route_out = args.out
     if not os.path.exists(route_out):
