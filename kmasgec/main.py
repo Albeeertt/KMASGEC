@@ -251,6 +251,27 @@ def ejecutar():
     instance_createGFF = CreateGFF(gff, all_preds, all_places, all_softmax_official_values)
     instance_createGFF.create_gff(remove_idx_mRNA, remove_idx_chr, remove_idx_startEnd, remove_contaminated, route_out)
 
+    # -------------------------------
+    # TODO: borrar después
+    data_first_algorithm['Result'] = 'None'
+    data_first_algorithm['prob_gene'] = np.nan
+    data_first_algorithm['prob_intergenic_region'] = np.nan
+    probs = torch.softmax(torch.tensor(all_softmax_official_values), dim=1)
+    new_prob_ir = [element[0] for element in probs]
+    new_prob_gene = [element[1] for element in probs]
+    prob_ir = np.asarray(new_prob_ir, np.float16)
+    prob_gene = np.asarray(new_prob_gene, np.float16)
+    preds_names = np.vectorize({
+            0: 'intergenic_region',
+            1: 'gene'
+        }.get)(all_preds)
+    a_places = np.asarray(all_places, np.int64)
+    data_first_algorithm.loc[a_places, 'Result'] = preds_names
+    data_first_algorithm.loc[a_places, 'prob_gene'] = prob_gene
+    data_first_algorithm.loc[a_places, 'prob_intergenic_region'] = prob_ir
+    data_first_algorithm.to_csv(route_out+"PREV_result.csv", sep=',')
+    # -------------------------------
+
     with open(route_out+'report.json', "a") as f:
         json.dump(report_dict, f, indent=4)
 
