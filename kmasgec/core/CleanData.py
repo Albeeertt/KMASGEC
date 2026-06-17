@@ -491,9 +491,11 @@ class Modify_samples:
                 record = self.case_extremes(record, 'end', selected_right, length_new_extreme, label_left, label_right)
             new_list_dataset.append(record)
         return pd.DataFrame(new_list_dataset)
-    
 
     def lends_mode(self, dataset: DataFrame, limit: int, zoom: int):
+
+        OVERLAP = zoom // 2
+        STEP = zoom - OVERLAP
 
         list_dataset: List[Dict] = dataset.to_dict(orient='records')
         new_list_dataset: List[Dict] = []
@@ -502,10 +504,10 @@ class Modify_samples:
             if (record['end'] - record['start'] >= limit) and (record['type'] == 'gene' or record['type'] == 'intergenic_region'):
                 start_inicial = record['start']
                 i: int = 0
-                while ((i*zoom)+start_inicial) < record['end']:
+                while ((i*STEP)+start_inicial) < record['end']:
                     record_copy = record.copy()
-                    record_copy['start'] = (zoom*i)+start_inicial
-                    record_copy['end'] = (record_copy['start'] + zoom) if (record_copy['start'] + zoom) <= record['end'] else record['end']
+                    record_copy['start'] = (STEP*i)+start_inicial
+                    record_copy['end'] = min(record_copy['start'] + zoom,record['end'])
                     new_list_dataset.append(record_copy)
                     i += 1
             else:
