@@ -78,7 +78,7 @@ def ejecutar():
     if args.max_len_seq:
         MAX_LEN_SEQ = args.max_len_seq
     else:
-        MAX_LEN_SEQ = 10000 
+        MAX_LEN_SEQ = 10_000 
 
 
     route_out = args.out
@@ -143,6 +143,9 @@ def ejecutar():
     remove_idx_startEnd = []
     remove_contaminated = []
     vocab = {'A': 0, 'C': 1, 'G': 2, 'T': 3}
+
+    data_first_algorithm['new_idx'] = data_first_algorithm.index
+
     for sample in data_first_algorithm.to_dict(orient='records'):
         new_record, add_idx_chr, add_idx_startEnd = instance_cleanData.extract_sample_counting_chr(sample, fasta)
         if new_record is None:
@@ -155,6 +158,7 @@ def ejecutar():
         X = []
         y = []
         place = []
+        place_new = []
         seq = [vocab[nucleotide] for nucleotide in new_record['seq']]
         X.append(seq)
         y.append(np.array(1) if new_record['type'] == "gene"
@@ -162,13 +166,16 @@ def ejecutar():
             # else np.array(2) if new_record['type'] == 'te' # TODO: borrar te
             else -1) # región intergénica / elemento transponible
         place.append(new_record['old_idx'])
+        place_new.append(new_record['new_idx'])
 
         X_fin = [np.asarray(i, dtype=np.float32) for i in X]
         y_fin = [np.asarray(i, dtype=np.float32) for i in y]
         place_fin = [np.asarray(i, dtype=np.int64) for i in place]
+        place_new_fin = [np.asarray(i, dtype=np.int64) for i in place_new]
 
-        save_all_to_json(X_fin, y_fin, place_fin, filename=ruta_data_first_algorithm, names=['X', 'Y', 'Place'])
+        save_all_to_json(X_fin, y_fin, place_fin, place_new_fin, filename=ruta_data_first_algorithm, names=['X', 'Y', 'Place', 'Place_new'])
 
+    data_first_algorithm.to_csv(route_out+"data_first_algorithm.csv", sep=',')
 
     # Model 1
     # ---------------------------------------------------------------------------------------------
@@ -236,7 +243,7 @@ def ejecutar():
     n_batches_test = len(loader_test)
 
     pbar_test = tqdm(loader_test, total=n_batches_test, desc="Test")
-    report_dict, all_trues, all_preds, all_places, all_softmax_official_values = iteration_test_oneHead(pbar_test,  model, device, criterion, 2)
+    report_dict, all_trues, all_preds, all_places, all_places_new, all_softmax_official_values = iteration_test_oneHead(pbar_test,  model, device, criterion, 2)
     pbar_test.close()
     os.remove(ruta_data_first_algorithm)
 
@@ -253,6 +260,7 @@ def ejecutar():
 
     # -------------------------------
     # TODO: borrar después
+    data_first_algorithm = data_first_algorithm.set_index('new_idx')
     data_first_algorithm['Result'] = 'None'
     data_first_algorithm['prob_gene'] = np.nan
     data_first_algorithm['prob_intergenic_region'] = np.nan
@@ -265,7 +273,7 @@ def ejecutar():
             0: 'intergenic_region',
             1: 'gene'
         }.get)(all_preds)
-    a_places = np.asarray(all_places, np.int64)
+    a_places = np.asarray(all_places_new, np.int64)
     data_first_algorithm.loc[a_places, 'Result'] = preds_names
     data_first_algorithm.loc[a_places, 'prob_gene'] = prob_gene
     data_first_algorithm.loc[a_places, 'prob_intergenic_region'] = prob_ir

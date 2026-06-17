@@ -261,12 +261,13 @@ def iteration_test_oneHead(
     all_trues = []
     all_preds = []
     all_places = []
+    all_places_new = []
     all_softmax_official_values = []
 
     criterion = criterion.to(device)
 
     with torch.no_grad():
-        for seqs, types, mask, place in dataloader:
+        for seqs, types, mask, place, place_new in dataloader:
             # types: [B], seqs: [B, L], mask: [B, L]
             labels = types.to(device)
             input_ids = seqs.to(device)
@@ -284,6 +285,7 @@ def iteration_test_oneHead(
             all_trues.extend(labels.cpu().tolist())
             all_preds.extend(preds.cpu().tolist())
             all_places.extend(list(place))
+            all_places_new.extend(list(place_new))
             # all_softmax_official_values.extend(F.softmax(outputs.cpu(), dim=1).tolist())
             # TODO: Descomentar la siguiente línea y comentar la posterior. Lo normal es transmitir el valor de 
             # las probabilidades no la de los logits.
@@ -313,7 +315,7 @@ def iteration_test_oneHead(
     # report_dict["confusion_matrix"] = cm_list
 
     print("Fin")
-    return report_dict, all_trues, all_preds, all_places, all_softmax_official_values
+    return report_dict, all_trues, all_preds, all_places, all_places_new, all_softmax_official_values
 
 
 def iteration_test_oneHead_div(
