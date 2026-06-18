@@ -92,9 +92,14 @@ class Base64JSONIterableDataset(Dataset):
         ).reshape(sample["Place"]["shape"]).copy()
         place = int(place.flatten()[0])
 
+        place_new = base64.b64decode(sample["Place_new"]["data"])
+        place_new = np.frombuffer(place_new,
+            dtype=sample["Place_new"]["dtype"]
+        ).reshape(sample["Place_new"]["shape"]).copy()
+        place_new = int(place_new.flatten()[0])
         
 
-        return X_tensor, Y_tensor, place
+        return X_tensor, Y_tensor, place, place_new
 
 
 def generate_attn_mask(query: torch.Tensor, key: torch.Tensor, padding_value: int, num_heads: int):
@@ -112,10 +117,10 @@ def generate_key_padding_mask(key: torch.Tensor, padding_value: int):
     return key_mask
 
 def collate_fn_oneHead(batch, padding_value: int):
-    seqs, types, places = zip(*batch)
+    seqs, types, places, place_new = zip(*batch)
 
     types = torch.tensor(types, dtype=torch.long)
     # types = torch.stack([torch.tensor(t, dtype=torch.float32) for t in types])
     seqs  = pad_sequence(seqs, batch_first=True, padding_value=padding_value)
     mask  = generate_key_padding_mask(seqs, padding_value)
-    return seqs, types, mask, places
+    return seqs, types, mask, places, place_new
