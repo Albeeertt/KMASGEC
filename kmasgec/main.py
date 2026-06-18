@@ -148,7 +148,6 @@ def ejecutar():
 
     for sample in data_first_algorithm.to_dict(orient='records'):
         new_record, add_idx_chr, add_idx_startEnd = instance_cleanData.extract_sample_counting_chr(sample, fasta)
-        new_record['new_idx'] = sample['new_idx']
         if new_record is None:
             remove_idx_chr.extend(add_idx_chr)
             remove_idx_startEnd.extend(add_idx_startEnd)
@@ -156,6 +155,7 @@ def ejecutar():
         if instance_cleanData.is_contaminated(new_record):
             remove_contaminated.append(new_record['old_idx'])
             continue
+        new_record['new_idx'] = sample['new_idx']
         X = []
         y = []
         place = []
