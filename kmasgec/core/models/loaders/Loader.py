@@ -122,5 +122,6 @@ def collate_fn_oneHead(batch, padding_value: int):
     types = torch.tensor(types, dtype=torch.long)
     # types = torch.stack([torch.tensor(t, dtype=torch.float32) for t in types])
     seqs  = pad_sequence(seqs, batch_first=True, padding_value=padding_value)
+    seqs = torch.nn.functional.pad(seqs, (0, 10_000 - seqs.size(1)), value=padding_value)
     mask  = generate_key_padding_mask(seqs, padding_value)
     return seqs, types, mask, places, place_new
