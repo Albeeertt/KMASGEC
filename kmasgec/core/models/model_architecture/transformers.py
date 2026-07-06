@@ -543,6 +543,47 @@ class RoPESelfAttention(nn.Module):
             x = attn_output.transpose(1, 2).reshape(B, L, D)
             return self.proj(x)
 
+class RoPECrossAttention(nn.Module):
+
+    def __init__(self, embed_dim: int, num_heads: int, dropout: float = .2):
+        super().__init__()
+        self.embed_dim = embed_dim
+        self.num_heads = num_heads
+        self.head_dim = embed_dim // num_heads
+
+        self.q = nn.Linear(embed_dim, embed_dim)
+        self.kv = nn.Linear(embed_dim, embed_dim*2)
+        self.proj = nn.Linear(embed_dim, embed_dim)
+        self.attn_dropout = nn.Dropout(dropout)
+
+        # Parte distinta donde se calcula la posición de cada token de la forma RoPE
+        self.rotary_emb = RotaryEmbedding(dim=self.head_dim)
+
+
+    def forward(self, x: torch.Tensor, kv:torch.tensor,  mask_q: torch.Tensor, mask_kv: torch.Tensor):
+            B, L_q, D = x.shape
+            L_kv = kv.shape[1]
+
+            q = self.q(x).reshape(B, L_q, self.num_heads, self.head_dim).permute(0, 2, 1, 3)
+            kv = self.kv(kv).reshape(B, L_kv, 2, self.num_heads, self.head_dim).permute(2, 0, 3, 1, 4)
+            k, v = kv[0], kv[1]
+
+            # La parte importante y por lo que estoy haciendo esto
+            q = self.rotary_emb.rotate_queries_or_keys(q)
+            k = self.rotary_emb.rotate_queries_or_keys(k)
+
+            mask_2d = mask_q.unsqueeze(2) & mask_kv.unsqueeze(1)
+            mask = mask_2d.unsqueeze(1)
+
+            attn_output = F.scaled_dot_product_attention(
+                q, k, v,
+                attn_mask=mask,
+                dropout_p=self.attn_dropout.p if self.training else 0.0
+            )
+
+            x = attn_output.transpose(1, 2).reshape(B, L_q, D)
+            return self.proj(x)
+
 class RoPEEncoderLayer(nn.Module):
 
     def __init__(self, d_model: int, nhead: int, dim_feedforward: int, dropout: float):
@@ -564,6 +605,26 @@ class RoPEEncoderLayer(nn.Module):
         x = x + self.mlp(self.norm2(x))
         return x
 
+class RoPEDecoderLayer(nn.Module):
+
+    def __init__(self, d_model: int, nhead: int, dim_feedforward: int, dropout: float):
+        super().__init__()
+        self.self_attn = RoPECrossAttention(d_model, nhead, dropout)
+        self.norm1 = nn.LayerNorm(d_model)
+        self.norm2 = nn.LayerNorm(d_model)
+
+        self.mlp = nn.Sequential(
+            nn.Linear(d_model, dim_feedforward),
+            nn.GELU(),
+            nn.Dropout(dropout),
+            nn.Linear(dim_feedforward, d_model),
+            nn.Dropout(dropout)
+        )
+
+    def forward(self, q: torch.Tensor, kv: torch.Tensor, mask_q: torch.Tensor, mask_kv: torch.Tensor):
+        x = q + self.self_attn(self.norm1(q), kv, mask_q=mask_q, mask_kv=mask_kv)
+        x = x + self.mlp(self.norm2(x))
+        return x
 
 class GatedAttentionPooling(nn.Module):
 
@@ -610,6 +671,87 @@ def downsampling_attnMask(attn_mask: torch.tensor, stride: int = 2, kernel_size:
         mask = F.max_pool1d(mask, kernel_size=kernel_size, stride=stride, padding = padding)
 
     return mask.squeeze(1).bool()
+
+class TransformerClassifier_attnPool_CrossAttn(nn.Module):
+
+    def __init__(self, vocab_size: int, padding_idx: int, embed_dim: int = 128, num_heads: int = 8, num_layers: int = 4, num_crossLayers: int = 2, dim_feedforward: int = 1024, num_classes: int = 2, dropout: float = .2):
+
+        super().__init__()
+        self.cls_token = nn.Parameter(torch.zeros(1, 1, embed_dim))
+        self.token_embed = nn.Embedding(vocab_size, embed_dim, padding_idx=padding_idx)
+        self.convs = nn.ModuleList([ # nn.Sequential
+                    nn.Conv1d(embed_dim, embed_dim, kernel_size = 9, stride= 2, padding = 4, dilation = 1),
+                    nn.GELU(),
+                    nn.Conv1d(embed_dim, embed_dim, kernel_size = 9, stride= 2, padding = 4, dilation = 1),
+                    nn.GELU(),
+                    nn.Conv1d(embed_dim, embed_dim, kernel_size = 9, stride= 2, padding = 4, dilation = 1),
+                    nn.GELU(),
+                    ])
+        self.layers = nn.ModuleList([
+                RoPEEncoderLayer(embed_dim, num_heads, dim_feedforward, dropout)
+                for _ in range(num_layers)
+            ])
+        self.cross_layers = nn.ModuleList([
+                RoPEDecoderLayer(embed_dim, num_heads, dim_feedforward, dropout)
+                for _ in range(num_crossLayers)
+            ])
+
+        # self.pooling = GatedAttentionPooling(embed_dim) # AttentionPooling(embed_dim)
+        self.norm_final = nn.LayerNorm(embed_dim)
+        self.classifier = nn.Sequential(
+            nn.Linear(embed_dim, dim_feedforward),
+            nn.GELU(),
+            nn.Dropout(dropout),
+            nn.Linear(dim_feedforward, num_classes)
+        )
+
+    def forward(self, inputs_ids: torch.Tensor, attention_mask=None):
+        bsz = inputs_ids.size(0)
+        x = self.token_embed(inputs_ids)
+        # True = valores que vamos a ignorar
+        # False = valores que sin distintos de padding_idx
+        # Capito
+
+        padding_mask = None
+        if attention_mask is not None:
+            attn_mask = downsampling_attnMask(attention_mask, stride=2, kernel_size=9, padding=4, num_layers=3)
+            cls_mask = torch.ones(bsz, 1, device=attention_mask.device, dtype=attention_mask.dtype)
+            attn_mask = torch.cat([cls_mask, attn_mask], dim=1)
+            padding_mask = attn_mask
+
+        latent_space_convs = []
+        latent_space_mask = []
+        x = x.transpose(1, 2)
+        for idx, layer in enumerate(self.convs):
+            x = layer(x)
+            if idx == 1:
+                latent_space_convs.append(x.transpose(1, 2))
+                latent_space_mask.append(downsampling_attnMask(attention_mask, stride=2, kernel_size=9, padding=4, num_layers=1))
+            elif idx == 3:
+                latent_space_convs.append(x.transpose(1, 2))
+                latent_space_mask.append(downsampling_attnMask(attention_mask, stride=2, kernel_size=9, padding=4, num_layers=2))
+
+        x = x.transpose(1, 2)
+
+        # x = self.convs(x.transpose(1, 2)).transpose(1, 2)
+        b, n, _ = x.shape
+        cls_token = self.cls_token.expand(b, -1, -1)
+        x = torch.cat((cls_token, x), dim=1)
+
+        for layer in self.layers:
+            x = layer(x, mask=padding_mask)
+
+        for idx, layer in enumerate(self.cross_layers):
+            x = layer(x, latent_space_convs[idx], mask_q=padding_mask, mask_kv=latent_space_mask[idx])
+
+        # cls_repr, weights = self.pooling(x, mask=padding_mask)
+        cls_repr = x[:, 0, :]
+        cls_repr = self.norm_final(cls_repr)
+        logits = self.classifier(cls_repr)
+        weights = []
+
+        return logits, weights
+
 
 class TransformerClassifier_attnPool(nn.Module):
 

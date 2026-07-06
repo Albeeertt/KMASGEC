@@ -41,7 +41,7 @@ from kmasgec.utils.agat import Agat
 from kmasgec.utils.json_pytorch import save_all_to_json
 from kmasgec.core.models.loaders.Loader import Base64JSONIterableDataset, collate_fn_oneHead
 from kmasgec.core.models.epochs.epoch import iteration_test_oneHead
-from kmasgec.core.models.model_architecture.transformers import TransformerClassifier_attnPool
+from kmasgec.core.models.model_architecture.transformers import TransformerClassifier_attnPool, TransformerClassifier_attnPool_CrossAttn
 from kmasgec.utils.plots.sections.section_gen import Gen
 from kmasgec.utils.plots.sections.section_ir import IntergenicRegion
 from kmasgec.utils.plots.sections.section_summary import Summary
@@ -207,12 +207,13 @@ def ejecutar():
 
     print("Cargando modelo...")
 
-    model = TransformerClassifier_attnPool(
+    model = TransformerClassifier_attnPool_CrossAttn(
         vocab_size=vocab_size,
         padding_idx=padding_value,
         embed_dim=512, 
         num_heads=8,
-        num_layers=10, # 8 
+        num_layers=4, # 8 
+        num_crossLayers=2,
         dim_feedforward=6092, # 4096
         num_classes=2, # TODO: borrar te
         dropout=0.2
@@ -257,7 +258,7 @@ def ejecutar():
         torch.cuda.empty_cache()
 
     instance_createGFF = CreateGFF(gff, all_preds, all_places, all_softmax_official_values)
-    instance_createGFF.create_gff(remove_idx_mRNA, remove_idx_chr, remove_idx_startEnd, remove_contaminated, route_out)
+    instance_createGFF.create_gff(remove_idx_mRNA, remove_idx_chr, remove_idx_startEnd, remove_contaminated, route_out, three_columns=False)
 
     # -------------------------------
     # TODO: borrar después
