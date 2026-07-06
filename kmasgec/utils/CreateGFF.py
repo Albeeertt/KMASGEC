@@ -70,7 +70,7 @@ class CreateGFF:
         return places, preds, new_prob_ir, new_prob_gene
     
 
-    def _cluster_samples(self, prob_ir: List, prob_gene: List, prob_te: List): # TODO: borrar te
+    def _cluster_samples_te(self, prob_ir: List, prob_gene: List, prob_te: List): # TODO: borrar te
         clusters_preds = defaultdict(list)
         clusters_p_ir = defaultdict(list)
         clusters_p_gene = defaultdict(list)
@@ -147,7 +147,7 @@ class CreateGFF:
         self._add_valuesGFF(remove_contaminated, 'Result', 'Contaminated')
 
         if three_columns:
-            places, preds, new_prob_ir, new_prob_gene, new_prob_te = self._cluster_samples(prob_ir, prob_gene, prob_te) # TODO: borrar te
+            places, preds, new_prob_ir, new_prob_gene, new_prob_te = self._cluster_samples_te(prob_ir, prob_gene, prob_te) # TODO: borrar te
         else:
             places, preds, new_prob_ir, new_prob_gene = self._cluster_samples(prob_ir, prob_gene) # TODO: borrar te
         
