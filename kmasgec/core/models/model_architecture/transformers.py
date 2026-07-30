@@ -738,11 +738,16 @@ class TransformerClassifier_attnPool_CrossAttn(nn.Module):
         cls_token = self.cls_token.expand(b, -1, -1)
         x = torch.cat((cls_token, x), dim=1)
 
-        for layer in self.layers:
-            x = layer(x, mask=padding_mask)
+        # TODO: Descomentar para el algoritmo cross_2.pt
+        # for layer in self.layers:
+        #     x = layer(x, mask=padding_mask)
 
-        for idx, layer in enumerate(self.cross_layers):
-            x = layer(x, latent_space_convs[idx], mask_q=padding_mask, mask_kv=latent_space_mask[idx])
+        # for idx, layer in enumerate(self.cross_layers):
+        #     x = layer(x, latent_space_convs[idx], mask_q=padding_mask, mask_kv=latent_space_mask[idx])
+
+        for idx, (self_layer, cross_layer) in enumerate(zip(self.layers, self.cross_layers)):
+            x = self_layer(x, mask=padding_mask)
+            x = cross_layer(x, latent_space_convs[idx], mask_q=padding_mask, mask_kv=latent_space_mask[idx])
 
         # cls_repr, weights = self.pooling(x, mask=padding_mask)
         cls_repr = x[:, 0, :]

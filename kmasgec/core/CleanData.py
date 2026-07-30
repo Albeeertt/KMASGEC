@@ -5,6 +5,7 @@ import logging
 from Bio import SeqIO
 import pyranges as pr
 from collections import Counter
+from operator import itemgetter
 
 from typing import Dict, List
 from pandas import DataFrame
@@ -414,6 +415,32 @@ class CleanData:
         return pd.DataFrame(new_list_dataset), contador_si, contador_no
     
 
+    def extremes_exonir(self, dataset: DataFrame, limite: int = 3000):
+
+        list_dataset = dataset.to_dict(orient='records')
+        list_dataset = sorted(list_dataset, key= itemgetter('chr', 'start'))
+        new_list_dataset = []
+        i = 1
+        while i < len(list_dataset)-1:
+            record = list_dataset[i]
+            if record['type'] == 'gene':
+                record_left = list_dataset[i-1]
+                record_right = list_dataset[i+1]
+                if record_left['type'] == 'intergenic_region' and record_right['type'] == 'intergenic_region' and record_left['end']+1 == record['start'] and record['end']+1 == record_right['start'] and record_left['chr'] == record['chr'] and record['chr'] == record_right['chr']:           
+                    record_copy_left = record.copy()
+                    record_copy_left['end'] = record_copy_left['start']-1
+                    record_copy_left['start'] = record_left['start'] if record_left['end']-record_left['start']<=limite else record_left['end']-limite
+                    record_copy_left['type'] = 'extreme'
+                    new_list_dataset.append(record_copy_left)
+                    # ------
+                    record_copy_right = record.copy()
+                    record_copy_right['start'] = record_copy_right['end']+1
+                    record_copy_right['end'] = record_right['end'] if record_right['end']-record_right['start']<=limite else record_right['start']+limite
+                    record_copy_right['type'] = 'extreme'
+                    new_list_dataset.append(record_copy_right)
+            i += 1
+
+        return new_list_dataset
 
 
 class Modify_samples:

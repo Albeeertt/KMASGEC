@@ -114,30 +114,14 @@ def ejecutar():
     # First Data
     # ---------------------------------------------------------------------------------------------
 
-
     data_first_algorithm = dataframe_elements_plus_te_mRNA[dataframe_elements_plus_te_mRNA['type'].isin(['intergenic_region', 'gene'])].copy() # TODO: borrar te
+    # TODO: EXONIR
+    list_extremes = instance_cleanData.extremes_exonir(data_first_algorithm, limite=MAX_LEN_SEQ)
+    data_first_algorithm = pd.concat([data_first_algorithm, pd.DataFrame(list_extremes)], ignore_index=True)
+    data_first_algorithm = data_first_algorithm[data_first_algorithm['type'].isin(['intergenic_region', 'extreme'])].copy() # TODO: borrar te
+
 
     data_first_algorithm[['start','end']] = data_first_algorithm[['start','end']].apply(pd.to_numeric, errors='coerce')
-    
-    # list_records, remove_idx_chr, remove_idx_startEnd = instance_cleanData.extract_sequences_counting_chr(data_first_algorithm, fasta)
-    # list_clean_records, remove_contaminated = instance_cleanData.remove_sample_contaminated(list_records)
-
-    # vocab = {'A': 0, 'C': 1, 'G': 2, 'T': 3}
-    # X = []
-    # y = []
-    # place = []
-    # for record in list_clean_records:
-    #     seq = [vocab[nucleotide] for nucleotide in record['seq']]
-    #     X.append(seq)
-    #     y.append(np.array(1) if record['type'] == "gene"
-    #         else np.array(0) if record['type'] == "intergenic_region"
-    #         else -1) # región intergénica / elemento transponible
-    #     place.append(record['old_idx'])
-
-    # X_fin = [np.asarray(i, dtype=np.float32) for i in X]
-    # y_fin = [np.asarray(i, dtype=np.float32) for i in y]
-    # place_fin = [np.asarray(i, dtype=np.int64) for i in place]
-    # save_all_to_json(X_fin, y_fin, place_fin, filename=ruta_data_first_algorithm, names=['X', 'Y', 'Place'])
 
     remove_idx_chr = []
     remove_idx_startEnd = []
@@ -162,10 +146,13 @@ def ejecutar():
         place_new = []
         seq = [vocab[nucleotide] for nucleotide in new_record['seq']]
         X.append(seq)
-        y.append(np.array(1) if new_record['type'] == "gene"
+        y.append(np.array(1) if new_record['type'] == 'extreme'
             else np.array(0) if new_record['type'] == "intergenic_region"
-            # else np.array(2) if new_record['type'] == 'te' # TODO: borrar te
-            else -1) # región intergénica / elemento transponible
+            else -1)
+        # y.append(np.array(1) if new_record['type'] == "gene"
+        #     else np.array(0) if new_record['type'] == "intergenic_region"
+        #     # else np.array(2) if new_record['type'] == 'te' # TODO: borrar te
+        #     else -1) # región intergénica / elemento transponible
         place.append(new_record['old_idx'])
         place_new.append(new_record['new_idx'])
 
@@ -182,7 +169,7 @@ def ejecutar():
     # ---------------------------------------------------------------------------------------------
 
     batch_size: int = args.batch_size
-    min_len_seq: Dict[int, int] = {0: 10, 1: 10, 2: 10, 3: 10}
+    min_len_seq: Dict[int, int] = {0: 50, 1: 50}
     instance_generateDataset  = GenerateDataset(False, agrupacion, kmer)
     padding_value = len(instance_generateDataset.vocabularyComplete)
     vocab_size = len(instance_generateDataset.vocabularyComplete)+1
@@ -207,16 +194,30 @@ def ejecutar():
 
     print("Cargando modelo...")
 
-    model = TransformerClassifier_attnPool_CrossAttn(
+    # TODO: quiero que tengas en cuenta que la ejecución del algoritmo comentado es distinta al descomentado por el orden del crossAttn.
+    # model = TransformerClassifier_attnPool_CrossAttn(
+    #     vocab_size=vocab_size,
+    #     padding_idx=padding_value,
+    #     embed_dim=512, 
+    #     num_heads=8,
+    #     num_layers=4, # 8 
+    #     num_crossLayers=2,
+    #     dim_feedforward=6092, # 4096
+    #     num_classes=2, # TODO: borrar te
+    #     dropout=0.2
+    # )
+    model = TransformerClassifier_attnPool_CrossAttn( #_pool (
         vocab_size=vocab_size,
         padding_idx=padding_value,
-        embed_dim=512, 
+        embed_dim=512, # 256
         num_heads=8,
-        num_layers=4, # 8 
+        num_layers=2, # 
         num_crossLayers=2,
-        dim_feedforward=6092, # 4096
-        num_classes=2, # TODO: borrar te
-        dropout=0.2
+        dim_feedforward=6092, # 3072
+        num_classes=2, # Multi class problem (gene, intergenic_region) 
+        # max_seq_len=1001,
+        dropout=0.2,
+        #pooling = "cls_token" # max
     )
     torch.compile(model)
     model = model.to(device)
@@ -257,8 +258,8 @@ def ejecutar():
         torch.cuda.synchronize()
         torch.cuda.empty_cache()
 
-    instance_createGFF = CreateGFF(gff, all_preds, all_places, all_softmax_official_values)
-    instance_createGFF.create_gff(remove_idx_mRNA, remove_idx_chr, remove_idx_startEnd, remove_contaminated, route_out, three_columns=False)
+    # instance_createGFF = CreateGFF(gff, all_preds, all_places, all_softmax_official_values)
+    # instance_createGFF.create_gff(remove_idx_mRNA, remove_idx_chr, remove_idx_startEnd, remove_contaminated, route_out, three_columns=False)
 
     # -------------------------------
     # TODO: borrar después

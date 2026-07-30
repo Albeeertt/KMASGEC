@@ -1,8 +1,11 @@
 # carpetas innecesarias
 kmasgec.egg-info/
 build/
-kmasgec/generate_models/model.pt
-kmasgec/generate_models/va_third.pt
+kmasgec/generate_models/cnn_simple_moreSpecies_sandwitchDistinto_3_cesga_nextVersion100species_moreSpecies.pt
+kmasgec/generate_models/cnn_simple_criminal_sandwitchDistinto_3.pt
+kmasgec/generate_models/cnn_simple_yesAttnMask_transformer_2_100species.pt
+kmasgec/generate_models/first_obj.pt
+kmasgec/generate_models/ltr_ir_5lr_5.pt
 
 # Archivos innecesarios
 .DS_Store
