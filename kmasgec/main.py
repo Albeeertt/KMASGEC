@@ -190,7 +190,6 @@ def ejecutar():
         num_classes=2, 
         dropout=0.2,
     )
-    torch.compile(model)
     model = model.to(device)
 
     criterion = nn.CrossEntropyLoss()
@@ -198,6 +197,8 @@ def ejecutar():
     checkpoint = torch.load(pkg_resources.resource_filename("kmasgec", f"generate_models/{args.model}"), map_location=device)
     state = checkpoint['model_state_dict']
     model.load_state_dict(state, strict=True)
+
+    model = torch.compile(model)
 
     if len(pre_args.gpus.split(',')) > 1:
         model = nn.DataParallel(model)
@@ -208,8 +209,9 @@ def ejecutar():
         dataset,
         batch_size=batch_size,
         shuffle=False,
-        num_workers=1,
-        prefetch_factor=1,
+        num_workers=8,
+        prefetch_factor=4,
+        pin_memory=True,
         persistent_workers=True,
         collate_fn=partial_collateFN
     )

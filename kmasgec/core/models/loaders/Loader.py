@@ -61,7 +61,8 @@ class Base64JSONIterableDataset(Dataset):
     def __getitem__(self, idx):
         if idx >= len(self.offsets):
             raise IndexError
-        self._f = open(self.filename, 'rb')
+        if getattr(self, '_f', None) is None:
+            self._f = open(self.filename, 'rb')
 
         self._f.seek(self.offsets[idx][0])
         raw = self._f.read(self.offsets[idx][1])

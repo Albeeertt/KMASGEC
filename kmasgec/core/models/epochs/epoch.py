@@ -267,9 +267,9 @@ def iteration_test_oneHead(
 
     with torch.no_grad():
         for seqs, types, mask, place, place_new in dataloader:
-            labels = types.to(device)
-            input_ids = seqs.to(device)
-            attention_mask = mask.to(device)
+            labels = types.to(device, non_blocking=True)
+            input_ids = seqs.to(device, non_blocking=True)
+            attention_mask = mask.to(device, non_blocking=True)
 
             batch_size = labels.size(0)
 
