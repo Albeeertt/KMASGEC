@@ -528,10 +528,10 @@ class Modify_samples:
         new_list_dataset: List[Dict] = []
 
         for record in list_dataset:
-            if (record['end'] - record['start'] >= limit) and (record['type'] == 'gene' or record['type'] == 'intergenic_region'):
+            if (record['end'] - record['start'] + 1 > limit) and (record['type'] == 'gene' or record['type'] == 'intergenic_region'):
                 start_inicial = record['start']
                 i: int = 0
-                while ((i*STEP)+start_inicial) < record['end']:
+                while (((i*STEP)+start_inicial)+zoom -1) <= record['end']:
                     record_copy = record.copy()
                     record_copy['start'] = (STEP*i)+start_inicial
                     record_copy['end'] = min(record_copy['start'] + zoom - 1,record['end'])
