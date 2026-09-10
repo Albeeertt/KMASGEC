@@ -757,6 +757,16 @@ class TransformerClassifier_attnPool_CrossAttn(nn.Module):
 
         return logits, weights
 
+class ChannelLayerNorm(nn.Module):
+    """LayerNorm sobre el eje de canales para tensores (B, C, L)."""
+    def __init__(self, num_channels, eps=1e-5):
+        super().__init__()
+        self.norm = nn.LayerNorm(num_channels, eps=eps)
+
+    def forward(self, x):            # (B, C, L)
+        x = x.transpose(1, 2)        # (B, L, C)
+        x = self.norm(x)
+        return x.transpose(1, 2)     # (B, C, L)
 
 class TransformerClassifier_attnPool(nn.Module):
 
@@ -764,21 +774,22 @@ class TransformerClassifier_attnPool(nn.Module):
 
         super().__init__()
         self.cls_token = nn.Parameter(torch.zeros(1, 1, embed_dim))
+        nn.init.trunc_normal_(self.cls_token, std=0.02)
         self.token_embed = nn.Embedding(vocab_size, embed_dim, padding_idx=padding_idx)
         self.convs = nn.Sequential(
-                    nn.Conv1d(embed_dim, embed_dim,kernel_size = 9, stride= 2, padding = 4, dilation = 1),
+                    nn.Conv1d(embed_dim, embed_dim, kernel_size = 9, stride= 2, padding = 4, dilation = 1),
+                    ChannelLayerNorm(embed_dim),
                     nn.GELU(),
-                    nn.Conv1d(embed_dim, embed_dim,kernel_size = 9, stride= 2, padding = 4, dilation = 1),
-                    nn.GELU(),
-                    nn.Conv1d(embed_dim, embed_dim,kernel_size = 9, stride= 2, padding = 4, dilation = 1),
+                    nn.Conv1d(embed_dim, embed_dim, kernel_size = 9, stride= 2, padding = 4, dilation = 1),
+                    ChannelLayerNorm(embed_dim),
                     nn.GELU(),
         )
+        self.post_conv_norm = nn.LayerNorm(embed_dim)
         self.layers = nn.ModuleList([
                 RoPEEncoderLayer(embed_dim, num_heads, dim_feedforward, dropout)
                 for _ in range(num_layers)
             ])
 
-        # self.pooling = GatedAttentionPooling(embed_dim) # AttentionPooling(embed_dim)
         self.norm_final = nn.LayerNorm(embed_dim)
         self.classifier = nn.Sequential(
             nn.Linear(embed_dim, dim_feedforward),
@@ -790,18 +801,16 @@ class TransformerClassifier_attnPool(nn.Module):
     def forward(self, inputs_ids: torch.Tensor, attention_mask=None):
         bsz = inputs_ids.size(0)
         x = self.token_embed(inputs_ids)
-        # True = valores que vamos a ignorar
-        # False = valores que sin distintos de padding_idx
-        # Capito
 
         padding_mask = None
         if attention_mask is not None:
-            attention_mask = downsampling_attnMask(attention_mask, stride=2, kernel_size=9, padding=4, num_layers=3)
+            attention_mask = downsampling_attnMask(attention_mask, stride=2, kernel_size=9, padding=4, num_layers=2)
             cls_mask = torch.ones(bsz, 1, device=attention_mask.device, dtype=attention_mask.dtype)
             attention_mask = torch.cat([cls_mask, attention_mask], dim=1)
             padding_mask = attention_mask
 
         x = self.convs(x.transpose(1, 2)).transpose(1, 2)
+        x = self.post_conv_norm(x)
         b, n, _ = x.shape
         cls_token = self.cls_token.expand(b, -1, -1)
         x = torch.cat((cls_token, x), dim=1)
@@ -809,13 +818,11 @@ class TransformerClassifier_attnPool(nn.Module):
         for layer in self.layers:
             x = layer(x, mask=padding_mask)
 
-        # cls_repr, weights = self.pooling(x, mask=padding_mask)
         cls_repr = x[:, 0, :]
         cls_repr = self.norm_final(cls_repr)
-        logits = self.classifier(cls_repr)
-        weights = []
+        logits_cls = self.classifier(cls_repr)
 
-        return logits, weights
+        return logits_cls, []
 
 class TransformerClassifier(nn.Module):
     """

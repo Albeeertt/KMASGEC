@@ -77,7 +77,6 @@ class Base64JSONIterableDataset(Dataset):
         Y_arr = np.frombuffer(Y_decoded,
             dtype=sample["Y"]["dtype"]
         ).reshape(sample["Y"]["shape"]).copy()
-        # Y_arr = int(Y_arr.flatten()[0])
         if self._kmer:
             X_arr = self._instance_generateDataset.seq_to_kmer(X_arr, sample["X"]["dtype"], Y_arr)
         else:
@@ -116,12 +115,12 @@ def generate_key_padding_mask(key: torch.Tensor, padding_value: int):
     key_mask = key_mask.bool()
     return key_mask
 
-def collate_fn_oneHead(batch, padding_value: int):
+def collate_fn_oneHead(batch, padding_value: int, max_padding: int):
     seqs, types, places, place_new = zip(*batch)
 
     types = torch.tensor(types, dtype=torch.long)
     # types = torch.stack([torch.tensor(t, dtype=torch.float32) for t in types])
     seqs  = pad_sequence(seqs, batch_first=True, padding_value=padding_value)
-    seqs = torch.nn.functional.pad(seqs, (0, 10_000 - seqs.size(1)), value=padding_value)
+    seqs = torch.nn.functional.pad(seqs, (0, max_padding - seqs.size(1)), value=padding_value)
     mask  = generate_key_padding_mask(seqs, padding_value)
     return seqs, types, mask, places, place_new

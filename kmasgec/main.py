@@ -27,6 +27,7 @@ import pkg_resources
 import pandas as pd
 import json
 import gc
+import time
 
 logging.basicConfig(
     level=logging.INFO,
@@ -68,6 +69,7 @@ def obtener_argumentos():
 
 
 def ejecutar():
+    time_inicio_crearDataset = time.time()
     NAME_HTML: str = 'info.html'
 
     agrupacion = 3
@@ -104,23 +106,14 @@ def ejecutar():
     instance_cleanData = CleanData()
     instance_modify_samples = Modify_samples()
     gff = instance_cleanData.obtain_gff(ruta_data_gff, encoding='latin-1')
-    elements_plus_te_mRNA, remove_idx_mRNA = instance_cleanData.obtain_gene_w_mRNA(gff, ['intergenic_region'], False, False) # TODO: borrar te
+    elements_plus_te_mRNA, remove_idx_mRNA = instance_cleanData.obtain_gene_w_mRNA(gff, ['intergenic_region'], False, False)
     dataframe_elements_plus_te_mRNA = pd.DataFrame(elements_plus_te_mRNA)
     dataframe_elements_plus_te_mRNA = instance_modify_samples.change_strand(dataframe_elements_plus_te_mRNA, type_record = 'intergenic_region', new_strand = '-')
     if args.lens_mode:
         dataframe_elements_plus_te_mRNA = instance_modify_samples.lends_mode(dataframe_elements_plus_te_mRNA, MAX_LEN_SEQ, args.zoom_length)
     fasta = instance_cleanData.obtain_dicc_fasta(ruta_data_fasta)
 
-    # First Data
-    # ---------------------------------------------------------------------------------------------
-
-    data_first_algorithm = dataframe_elements_plus_te_mRNA[dataframe_elements_plus_te_mRNA['type'].isin(['intergenic_region', 'gene'])].copy() # TODO: borrar te
-    # TODO: EXONIR
-    list_extremes = instance_cleanData.extremes_exonir(data_first_algorithm, limite=MAX_LEN_SEQ)
-    data_first_algorithm = pd.concat([data_first_algorithm, pd.DataFrame(list_extremes)], ignore_index=True)
-    data_first_algorithm = data_first_algorithm[data_first_algorithm['type'].isin(['intergenic_region', 'extreme'])].copy() # TODO: borrar te
-
-
+    data_first_algorithm = dataframe_elements_plus_te_mRNA[dataframe_elements_plus_te_mRNA['type'].isin(['intergenic_region', 'gene'])].copy()
     data_first_algorithm[['start','end']] = data_first_algorithm[['start','end']].apply(pd.to_numeric, errors='coerce')
 
     remove_idx_chr = []
@@ -146,13 +139,9 @@ def ejecutar():
         place_new = []
         seq = [vocab[nucleotide] for nucleotide in new_record['seq']]
         X.append(seq)
-        y.append(np.array(1) if new_record['type'] == 'extreme'
+        y.append(np.array(1) if new_record['type'] == 'gene'
             else np.array(0) if new_record['type'] == "intergenic_region"
             else -1)
-        # y.append(np.array(1) if new_record['type'] == "gene"
-        #     else np.array(0) if new_record['type'] == "intergenic_region"
-        #     # else np.array(2) if new_record['type'] == 'te' # TODO: borrar te
-        #     else -1) # región intergénica / elemento transponible
         place.append(new_record['old_idx'])
         place_new.append(new_record['new_idx'])
 
@@ -163,10 +152,12 @@ def ejecutar():
 
         save_all_to_json(X_fin, y_fin, place_fin, place_new_fin, filename=ruta_data_first_algorithm, names=['X', 'Y', 'Place', 'Place_new'])
 
-    data_first_algorithm.to_csv(route_out+"data_first_algorithm.csv", sep=',')
+    time_fin_crearDataset = time.time()
 
     # Model 1
     # ---------------------------------------------------------------------------------------------
+
+    time_inicio_algoritmo = time.time()
 
     batch_size: int = args.batch_size
     min_len_seq: Dict[int, int] = {0: 50, 1: 50}
@@ -174,7 +165,7 @@ def ejecutar():
     padding_value = len(instance_generateDataset.vocabularyComplete)
     vocab_size = len(instance_generateDataset.vocabularyComplete)+1
     print("Tamaño del vocabulario: ", len(instance_generateDataset.vocabularyComplete))
-    partial_collateFN = partial(collate_fn_oneHead, padding_value=padding_value)
+    partial_collateFN = partial(collate_fn_oneHead, padding_value=padding_value, max_padding=MAX_LEN_SEQ)
 
     #device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     # device = torch.device("cuda")
@@ -194,35 +185,20 @@ def ejecutar():
 
     print("Cargando modelo...")
 
-    # TODO: quiero que tengas en cuenta que la ejecución del algoritmo comentado es distinta al descomentado por el orden del crossAttn.
-    # model = TransformerClassifier_attnPool_CrossAttn(
-    #     vocab_size=vocab_size,
-    #     padding_idx=padding_value,
-    #     embed_dim=512, 
-    #     num_heads=8,
-    #     num_layers=4, # 8 
-    #     num_crossLayers=2,
-    #     dim_feedforward=6092, # 4096
-    #     num_classes=2, # TODO: borrar te
-    #     dropout=0.2
-    # )
-    model = TransformerClassifier_attnPool_CrossAttn( #_pool (
+    model = TransformerClassifier_attnPool( 
         vocab_size=vocab_size,
         padding_idx=padding_value,
-        embed_dim=512, # 256
+        embed_dim=256, 
         num_heads=8,
-        num_layers=2, # 
-        num_crossLayers=2,
-        dim_feedforward=6092, # 3072
-        num_classes=2, # Multi class problem (gene, intergenic_region) 
-        # max_seq_len=1001,
+        num_layers=3, 
+        dim_feedforward=1024, 
+        num_classes=2, 
         dropout=0.2,
-        #pooling = "cls_token" # max
     )
     torch.compile(model)
     model = model.to(device)
 
-    criterion = nn.CrossEntropyLoss() # nn.CrossEntropyLoss()
+    criterion = nn.CrossEntropyLoss()
 
     checkpoint = torch.load(pkg_resources.resource_filename("kmasgec", f"generate_models/{args.model}"), map_location=device)
     state = checkpoint['model_state_dict']
@@ -246,7 +222,7 @@ def ejecutar():
     n_batches_test = len(loader_test)
 
     pbar_test = tqdm(loader_test, total=n_batches_test, desc="Test")
-    report_dict, all_trues, all_preds, all_places, all_places_new, all_softmax_official_values = iteration_test_oneHead(pbar_test,  model, device, criterion, 2)
+    report_dict, _, all_preds, all_places, all_places_new, all_softmax_official_values = iteration_test_oneHead(pbar_test,  model, device, criterion)
     pbar_test.close()
     os.remove(ruta_data_first_algorithm)
 
@@ -258,8 +234,11 @@ def ejecutar():
         torch.cuda.synchronize()
         torch.cuda.empty_cache()
 
-    # instance_createGFF = CreateGFF(gff, all_preds, all_places, all_softmax_official_values)
-    # instance_createGFF.create_gff(remove_idx_mRNA, remove_idx_chr, remove_idx_startEnd, remove_contaminated, route_out, three_columns=False)
+    time_fin_algoritmo = time.time()
+    time_inicio_postProcesado = time.time()
+
+    instance_createGFF = CreateGFF(gff, all_preds, all_places, all_softmax_official_values)
+    instance_createGFF.create_gff(remove_idx_mRNA, remove_idx_chr, remove_idx_startEnd, remove_contaminated, route_out, three_columns=False)
 
     # -------------------------------
     # TODO: borrar después
@@ -286,87 +265,13 @@ def ejecutar():
     with open(route_out+'report.json', "a") as f:
         json.dump(report_dict, f, indent=4)
 
-    # gff['Result'] = 'None'
-    # gff['prob_gene'] = np.nan
-    # gff['prob_intergenic_region'] = np.nan
+    time_fin_postProcesado = time.time()
 
-    # a_places = np.asarray(all_places, dtype=np.int64)
-    # a_preds  = np.asarray(all_preds, dtype=int)
-    # a_trues  = np.asarray(all_trues, dtype=int)
-    # probs = torch.softmax(torch.tensor(all_softmax_official_values), dim=1)
-    # probs_ir = np.asarray([ element[0] for element in probs], dtype=np.float16)
-    # probs_gene = np.asarray([ element[1] for element in probs], dtype=np.float16)
-    # # probs_gene_ir = np.asarray([ element[1] for element in probs], dtype=np.float16)
-    # a_remove_idx_mRNA = np.asarray(remove_idx_mRNA, dtype=np.int64)
-    # a_remove_idx_chr = np.asarray(remove_idx_chr, dtype=np.int64)
-    # a_remove_idx_startEnd = np.asarray(remove_idx_startEnd, dtype=np.int64)
-    # a_remove_contaminated = np.asarray(remove_contaminated, dtype=np.int64)
+    dict_times = {
+        'tiempo_CrearDataset': (time_fin_crearDataset-time_inicio_crearDataset)/60,
+        'tiempo_algoritmo': (time_fin_algoritmo-time_inicio_algoritmo)/60,
+        'tiempo_postProcesado': (time_fin_postProcesado-time_inicio_postProcesado)/60
+                  }
 
-    # # preds = (a_preds > 0.5).astype(int)
-    # # codes = preds[:, 0] * 2 + preds[:, 1]
-    # # mapping = {
-    # # 1: 'gen',
-    # # 2: 'región intergénica',
-    # # 3: 'gen_into_ri',
-    # # 0: 'ninguno'
-    # # }
-
-    # label_map = {
-    #     0: "región intergénica",
-    #     1: "gen_ir",
-    #     2: "gen"
-    # }
-
-    # labels = np.vectorize(label_map.get)(a_preds)
-
-    # # labels = np.where(np.isin(a_preds, [0, 1]), 'gen', 'región intergénica')
-
-    # gff.loc[a_places, 'Result'] = labels
-    # gff.loc[a_remove_idx_mRNA, 'Result'] = 'No-mRNA'
-    # # gff.loc[a_remove_idx_mRNA, 'Bad'] = 'Not-considered'
-
-    # gff.loc[a_remove_idx_chr, 'Result'] = 'No-fasta'
-    # # gff.loc[a_remove_idx_chr, 'Bad'] = 'Not-considered'
-
-    # gff.loc[a_remove_idx_startEnd, 'Result'] = 'Start_bigger_than_end'
-    # # gff.loc[a_remove_idx_startEnd, 'Bad'] = 'Not-considered'
-
-    # gff.loc[a_remove_contaminated, 'Result'] = 'Contaminated'
-    # # gff.loc[a_remove_contaminated, 'Bad'] = 'Not-considered'
-
-    # gff.loc[a_places, 'prob_gene'] = probs_gene
-    # gff.loc[a_places, 'prob_intergenic_region'] = probs_ir
-    # # gff.loc[a_places, 'prob_gen_ri'] = probs_gene_ir
-
-    # # bad_mask = a_trues != a_preds
-    # # bad_idx  = a_places[bad_mask] 
-    # # gff.loc[bad_idx, 'Bad'] = 'Yes'
-
-    # gff.to_csv(route_out+'result.csv', sep=',')
-
-    # LIMIT_PROB_GENE, LIMIT_PROB_IR =.5, .5
-
-    # instance_html_gen = Gen(args.html_path, "Desglose", LIMIT_PROB_GENE, LIMIT_PROB_IR)
-    # instance_html_ir = IntergenicRegion(args.html_path, 'ir ir ir', LIMIT_PROB_GENE, LIMIT_PROB_IR)
-    # instance_html_summary = Summary(route_out+NAME_HTML, 'Summary', "#DE8512", LIMIT_PROB_GENE, LIMIT_PROB_IR)
-
-
-    # mask_gene = np.all(a_trues == [0, 1], axis=1)
-    # mask_ir = np.all(a_trues == [1, 0], axis=1)
-
-    # all_softmax_official_values: np.array = np.asarray(all_softmax_official_values, dtype=float)
-
-    # instance_html_summary.define_section(all_softmax_official_values, a_trues, 200, 0)
-
-    # instance_html_gen.define_section(all_softmax_official_values[mask_gene], a_trues[mask_gene], 200, 1260)
-    # instance_html_ir.define_section(all_softmax_official_values[mask_ir], a_trues[mask_ir], 200, 2520)
-
-
-    # instance_html_gen = Gen('./prueba.html', "gen gen gen")
-    # instance_html_ir = IntergenicRegion('./prueba.html', 'IR IR IR')
-
-    # mask_gene = np.all(a_trues == [0, 1], axis=1)
-    # mask_ir = np.all(a_trues == [1, 0], axis=1)
-
-    # instance_html_gen.define_section(a_preds[mask_gene], a_trues[mask_gene])
-    # instance_html_ir.define_section(a_preds[mask_ir], a_trues[mask_ir])
+    with open(route_out+'time.json', 'a') as f:
+        json.dump(dict_times, f, indent=4)

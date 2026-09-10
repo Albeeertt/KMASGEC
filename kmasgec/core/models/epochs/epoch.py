@@ -250,8 +250,7 @@ def iteration_test_oneHead(
     dataloader,      # ahora es un DataLoader, no el Dataset crudo
     model,
     device,
-    criterion,
-    num_classes
+    criterion
 ):
     model.eval()
     total_val_loss = 0.0
@@ -268,7 +267,6 @@ def iteration_test_oneHead(
 
     with torch.no_grad():
         for seqs, types, mask, place, place_new in dataloader:
-            # types: [B], seqs: [B, L], mask: [B, L]
             labels = types.to(device)
             input_ids = seqs.to(device)
             attention_mask = mask.to(device)
@@ -286,10 +284,6 @@ def iteration_test_oneHead(
             all_preds.extend(preds.cpu().tolist())
             all_places.extend(list(place))
             all_places_new.extend(list(place_new))
-            # all_softmax_official_values.extend(F.softmax(outputs.cpu(), dim=1).tolist())
-            # TODO: Descomentar la siguiente línea y comentar la posterior. Lo normal es transmitir el valor de 
-            # las probabilidades no la de los logits.
-            # all_softmax_official_values.extend(probs.tolist())
             all_softmax_official_values.extend(outputs.tolist())
 
             loss     = criterion(outputs, labels)
@@ -300,21 +294,14 @@ def iteration_test_oneHead(
                 'acc_test' : f'{total_acc/total_count:.4f}'
             })
 
-        avg_val_loss     = total_val_loss     / total_count
-        epoch_acc = total_acc / total_count
-
-    print(f"Accuracy en test: {epoch_acc:.4f}")
-    print("--------------------------------------------------")
-    # report_dict = classification_report(all_trues, all_preds, digits=4, output_dict=True)
     report_dict = []
-    # cm = confusion_matrix(
-    #     all_trues,
-    #     all_preds
-    # )
-    # cm_list = cm.tolist()
-    # report_dict["confusion_matrix"] = cm_list
+    cm = confusion_matrix(
+        all_trues,
+        all_preds
+    )
+    cm_list = cm.tolist()
+    report_dict["confusion_matrix"] = cm_list
 
-    print("Fin")
     return report_dict, all_trues, all_preds, all_places, all_places_new, all_softmax_official_values
 
 
