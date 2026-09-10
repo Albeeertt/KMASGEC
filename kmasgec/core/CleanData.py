@@ -534,7 +534,7 @@ class Modify_samples:
                 while ((i*STEP)+start_inicial) <= record['end']:
                     record_copy = record.copy()
                     record_copy['start'] = (STEP*i)+start_inicial
-                    e
+                    record_copy['end'] = min(record_copy['start'] + limit - 1,record['end'])
                     new_list_dataset.append(record_copy)
                     if record_copy['end'] == record['end']:
                         break
