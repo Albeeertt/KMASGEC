@@ -294,7 +294,7 @@ def iteration_test_oneHead(
                 'acc_test' : f'{total_acc/total_count:.4f}'
             })
 
-    report_dict = []
+    report_dict = {}
     cm = confusion_matrix(
         all_trues,
         all_preds
