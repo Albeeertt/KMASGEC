@@ -289,9 +289,9 @@ class CleanData:
         if record['start'] > record['end']:
             remove_samples.append(record['old_idx'])
         elif (record['strand'] == '+') or  (record['strand'] == '.'):
-            new_record = {'seq': fasta_file[record['start']:record['end']+1], 'type': record['type'], 'old_idx': record['old_idx']}
+            new_record = {'seq': fasta_file[record['start']-1:record['end']], 'type': record['type'], 'old_idx': record['old_idx']}
         elif record['strand'] == '-':
-            new_record = {'seq': complement(fasta_file[record['start']:record['end']+1]), 'type': record['type'], 'old_idx': record['old_idx']}
+            new_record = {'seq': complement(fasta_file[record['start']-1:record['end']]), 'type': record['type'], 'old_idx': record['old_idx']}
         
         return new_record, problemas_chr, remove_samples
 
@@ -519,10 +519,10 @@ class Modify_samples:
             new_list_dataset.append(record)
         return pd.DataFrame(new_list_dataset)
 
-    def lends_mode(self, dataset: DataFrame, limit: int, zoom: int):
+    def lens_mode(self, dataset: DataFrame, limit: int):
 
-        OVERLAP = zoom // 2
-        STEP = zoom - OVERLAP
+        OVERLAP = limit // 2
+        STEP = limit - OVERLAP
 
         list_dataset: List[Dict] = dataset.to_dict(orient='records')
         new_list_dataset: List[Dict] = []
@@ -531,11 +531,13 @@ class Modify_samples:
             if (record['end'] - record['start'] + 1 > limit) and (record['type'] == 'gene' or record['type'] == 'intergenic_region'):
                 start_inicial = record['start']
                 i: int = 0
-                while (((i*STEP)+start_inicial)+zoom -1) <= record['end']:
+                while ((i*STEP)+start_inicial) <= record['end']:
                     record_copy = record.copy()
                     record_copy['start'] = (STEP*i)+start_inicial
-                    record_copy['end'] = min(record_copy['start'] + zoom - 1,record['end'])
+                    e
                     new_list_dataset.append(record_copy)
+                    if record_copy['end'] == record['end']:
+                        break
                     i += 1
             else:
                 new_list_dataset.append(record)

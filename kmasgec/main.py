@@ -61,7 +61,6 @@ def obtener_argumentos():
     parser.add_argument('--train', action='store_true', help="Si deseas entrenar un modelo desde cero")
     parser.add_argument('--gpus', type=str, default="", help="GPUs a usar, e.g. '0', '0,1', '0,2,3'", required=True) # TODO: ignorar, hacer un único parser y ya.
     parser.add_argument("--lens_mode", action="store_true", help="Divide las secuencias en trozos.")
-    parser.add_argument("--zoom_length", type=int, required=False, help="Tamaño de las subsecuencias.")
     parser.add_argument("--max_len_seq", type=int, required=False, help="tamaño máximo de la secuencia.")
 
     # Analizar los argumentos pasados por el usuario
@@ -88,10 +87,6 @@ def ejecutar():
         os.mkdir(route_out)
         
     route_out = route_out+'/' if not route_out.endswith('/') else route_out
-
-    if args.lens_mode and not args.zoom_length:
-        print("arg. zoom_length is necessary with lens_mode.")
-        return
         
     if args.add_labels:
         instance_agat = Agat("katulu")
@@ -110,7 +105,7 @@ def ejecutar():
     dataframe_elements_plus_te_mRNA = pd.DataFrame(elements_plus_te_mRNA)
     dataframe_elements_plus_te_mRNA = instance_modify_samples.change_strand(dataframe_elements_plus_te_mRNA, type_record = 'intergenic_region', new_strand = '-')
     if args.lens_mode:
-        dataframe_elements_plus_te_mRNA = instance_modify_samples.lends_mode(dataframe_elements_plus_te_mRNA, MAX_LEN_SEQ, args.zoom_length)
+        dataframe_elements_plus_te_mRNA = instance_modify_samples.lens_mode(dataframe_elements_plus_te_mRNA, MAX_LEN_SEQ)
     fasta = instance_cleanData.obtain_dicc_fasta(ruta_data_fasta)
 
     data_first_algorithm = dataframe_elements_plus_te_mRNA[dataframe_elements_plus_te_mRNA['type'].isin(['intergenic_region', 'gene'])].copy()
